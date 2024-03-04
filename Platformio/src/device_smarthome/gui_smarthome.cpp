@@ -16,7 +16,13 @@ static void smartHomeToggle_event_cb(lv_event_t * e){
   else payload = "false";
   // Publish an MQTT message based on the event user data  
   #ifdef ENABLE_WIFI_AND_MQTT
-  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_BULB1_SET, payload);
+  if((int)e->user_data == 1) {
+    if(payload == "true") {
+      executeCommand(SMARTHOME_MQTT_CINEMA_STAIRS_ON, payload);
+    }else {
+      executeCommand(SMARTHOME_MQTT_CINEMA_STAIRS_OFF, payload);
+    }
+  }
   if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_BULB2_SET, payload);
   #endif
 }
@@ -36,7 +42,7 @@ static void smartHomeSlider_event_cb(lv_event_t * e){
 
 void init_gui_tab_smarthome(lv_obj_t* tabview) {
 
-  lv_obj_t* tab = lv_tabview_add_tab(tabview, "Smart Home");
+  lv_obj_t* tab = lv_tabview_add_tab(tabview, "Smart Controls");
 
   // Add content to the smart home tab (4)
   lv_obj_set_layout(tab, LV_LAYOUT_FLEX);
@@ -45,7 +51,7 @@ void init_gui_tab_smarthome(lv_obj_t* tabview) {
 
   // Add a label, then a box for the light controls
   lv_obj_t* menuLabel = lv_label_create(tab);
-  lv_label_set_text(menuLabel, "Living Room");
+  lv_label_set_text(menuLabel, "Cinema");
 
   lv_obj_t* menuBox = lv_obj_create(tab);
   lv_obj_set_size(menuBox, lv_pct(100), 79);
@@ -59,7 +65,7 @@ void init_gui_tab_smarthome(lv_obj_t* tabview) {
   lv_obj_align(bulbIcon, LV_ALIGN_TOP_LEFT, 0, 0);
 
   menuLabel = lv_label_create(menuBox);
-  lv_label_set_text(menuLabel, "Floor Lamp");
+  lv_label_set_text(menuLabel, "Stair Lights");
   lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 22, 3);
   lv_obj_t* lightToggleA = lv_switch_create(menuBox);
   lv_obj_set_size(lightToggleA, 40, 22);
@@ -94,7 +100,7 @@ void init_gui_tab_smarthome(lv_obj_t* tabview) {
   lv_obj_align(bulbIcon, LV_ALIGN_TOP_LEFT, 0, 0);
 
   menuLabel = lv_label_create(menuBox);
-  lv_label_set_text(menuLabel, "Ceiling Light");
+  lv_label_set_text(menuLabel, "Main Light");
   lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 22, 3);
   lv_obj_t* lightToggleB = lv_switch_create(menuBox);
   lv_obj_set_size(lightToggleB, 40, 22);
