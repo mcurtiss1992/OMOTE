@@ -23,7 +23,13 @@ static void smartHomeToggle_event_cb(lv_event_t * e){
       executeCommand(SMARTHOME_MQTT_CINEMA_STAIRS_OFF, payload);
     }
   }
-  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_BULB2_SET, payload);
+  if((int)e->user_data == 2) {
+    if(payload == "true"){
+      executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_ON, payload);
+    } else {
+      executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_OFF, payload);
+    }
+  }
   #endif
 }
 
@@ -35,8 +41,8 @@ static void smartHomeSlider_event_cb(lv_event_t * e){
   std::string payload_str(payload);
   // Publish an MQTT message based on the event user data
   #ifdef ENABLE_WIFI_AND_MQTT
-  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_BULB1_BRIGHTNESS_SET, payload);
-  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_BULB2_BRIGHTNESS_SET, payload);
+  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_CINEMA_STAIR_BRIGHTNESS_SET, payload);
+  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_BRIGHTNESS_SET, payload);
   #endif
 }
 
@@ -122,15 +128,6 @@ void init_gui_tab_smarthome(lv_obj_t* tabview) {
   lv_obj_align(slider, LV_ALIGN_TOP_MID, 0, 37);
   lv_obj_add_event_cb(slider, smartHomeSlider_event_cb, LV_EVENT_VALUE_CHANGED, (void*)2);
 
-
-  // Add another room (empty for now)
-  menuLabel = lv_label_create(tab);
-  lv_label_set_text(menuLabel, "Kitchen");
-
-  menuBox = lv_obj_create(tab);
-  lv_obj_set_size(menuBox, lv_pct(100), 79);
-  lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
-  lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
 
 }
 
