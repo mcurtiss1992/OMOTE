@@ -2,6 +2,7 @@
 #include "gui_general_and_keys/keys.h"
 #include "device_samsungTV/device_samsungTV.h"
 #include "device_yamahaAmp/device_yamahaAmp.h"
+#include "device_denonAVR/device_denonAVR.h"
 #include "scenes/sceneRegistry.h"
 #include "scenes/scene_allOff.h"
 #include "scenes/scene_TV.h"
