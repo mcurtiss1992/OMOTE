@@ -8,7 +8,7 @@ void register_device_denonavr()
     commands[DENONAVR_MQTT_OFF] = makeCommandData(MQTT, {"omote/denonavr", "avr_off"});
     commands[DENONAVR_MQTT_MUTE] = makeCommandData(MQTT, {"omote/denonavr", "avr_mute"});
     commands[DENONAVR_MQTT_VOL_UP] = makeCommandData(MQTT, {"omote/denonavr", "avr_vol_up"});
-    commands[DENONAVR_MQTT_VOL_DOWN] = makeCommandData(MQTT, {"omote/enonavr", "avr_vol_down"});
+    commands[DENONAVR_MQTT_VOL_DOWN] = makeCommandData(MQTT, {"omote/denonavr", "avr_vol_down"});
     commands[DENONAVR_MQTT_INPUT_BRAY] = makeCommandData(MQTT, {"omote/denonavr", "avr_input_bray"});
     commands[DENONAVR_MQTT_INPUT_PS5] = makeCommandData(MQTT, {"omote/denonavr", "avr_input_ps5"});
     // commands[DENONAVR_MQTT_INPUT_SWITCH] = makeCommandData(MQTT, {"omote/denonavr", "avr_input_switch"});
