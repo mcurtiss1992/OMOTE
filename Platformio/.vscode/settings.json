@@ -1,17 +1,9 @@
 {
     "cmake.configureOnOpen": false,
     "files.associations": {
-        "*.json.liquid": "json",
-        "*.yaml.liquid": "yaml",
-        "*.md.liquid": "markdown",
-        "*.js.liquid": "liquid-javascript",
-        "*.css.liquid": "liquid-css",
-        "*.scss.liquid": "liquid-scss",
-        "*.php": "php",
         "random": "cpp",
         "array": "cpp",
-        "lvgl.h": "c",
-        "string": "cpp"
+        "lvgl.h": "c"
     },
     "cmake.sourceDirectory": "${workspaceFolder}/.pio/libdeps/esp32/Adafruit BusIO"
 }

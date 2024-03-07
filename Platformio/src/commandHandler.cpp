@@ -4,7 +4,6 @@
 #include "hardware/mqtt.h"
 #include "device_samsungTV/device_samsungTV.h"
 #include "device_yamahaAmp/device_yamahaAmp.h"
-#include "device_denonAVR/device_denonAVR.h"
 #include "device_keyboard_mqtt/device_keyboard_mqtt.h"
 #include "device_keyboard_ble/device_keyboard_ble.h"
 #include "commandHandler.h"
@@ -127,7 +126,7 @@ void executeCommandWithData(std::string command, commandData commandData, std::s
       break;
     }
 
-    #ifdef ENABLE_WIFI_AND_MQTT
+    #if ENABLE_WIFI_AND_MQTT == 1
     case MQTT: {
       auto current = commandData.commandPayloads.begin();
       std::string topic = *current;

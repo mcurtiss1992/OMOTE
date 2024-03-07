@@ -3,11 +3,9 @@
 
 void register_device_smarthome() {
   #ifdef ENABLE_KEYBOARD_MQTT
-  commands[SMARTHOME_MQTT_CINEMA_STAIRS_ON]             = makeCommandData(MQTT, {"cinema_stair_on"             }); // payload must be set when calling commandHandler
-  commands[SMARTHOME_MQTT_CINEMA_STAIRS_OFF]            = makeCommandData(MQTT, {"cinema_stair_off"});                         // payload must be set when calling commandHandler
-  commands[SMARTHOME_MQTT_CINEMA_MAIN_ON]               = makeCommandData(MQTT, {"cinema_main_on"             }); // payload must be set when calling commandHandler
-  commands[SMARTHOME_MQTT_CINEMA_MAIN_OFF]               = makeCommandData(MQTT, {"cinema_main_off"});                         // payload must be set when calling commandHandler
-  commands[SMARTHOME_MQTT_CINEMA_STAIR_BRIGHTNESS_SET]  = makeCommandData(MQTT, {"cinema_stair_setbrightness"   }); // payload must be set when calling commandHandler
-  commands[SMARTHOME_MQTT_CINEMA_MAIN_BRIGHTNESS_SET]   = makeCommandData(MQTT, {"cinema_main_setbrightness"   }); // payload must be set when calling commandHandler
+  commands[SMARTHOME_MQTT_BULB1_SET]            = makeCommandData(MQTT, {"bulb1_set"             }); // payload must be set when calling commandHandler
+  commands[SMARTHOME_MQTT_BULB2_SET]            = makeCommandData(MQTT, {"bulb2_set"             }); // payload must be set when calling commandHandler
+  commands[SMARTHOME_MQTT_BULB1_BRIGHTNESS_SET] = makeCommandData(MQTT, {"bulb1_setbrightness"   }); // payload must be set when calling commandHandler
+  commands[SMARTHOME_MQTT_BULB2_BRIGHTNESS_SET] = makeCommandData(MQTT, {"bulb2_setbrightness"   }); // payload must be set when calling commandHandler
   #endif
 }

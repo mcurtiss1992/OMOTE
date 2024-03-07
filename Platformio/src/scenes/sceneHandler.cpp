@@ -1,7 +1,6 @@
 #include <string>
 #include "device_samsungTV/device_samsungTV.h"
 #include "device_yamahaAmp/device_yamahaAmp.h"
-#include "device_denonAVR/device_denonAVR.h"
 #include "scenes/sceneRegistry.h"
 #include "scenes/scene_allOff.h"
 #include "scenes/scene_TV.h"
@@ -25,7 +24,7 @@ void handleScene(std::string command, commandData commandData, std::string addit
     Serial.printf("scene: will switch from old scene %s to new scene %s\r\n", currentScene.c_str(), scene_name.c_str());
   }
 
-  lv_label_set_text(SceneLabel, "changing...");
+  if (SceneLabel != NULL) {lv_label_set_text(SceneLabel, "changing...");}
   gui_loop();
 
   // end old scene
@@ -46,11 +45,13 @@ void handleScene(std::string command, commandData commandData, std::string addit
 
   currentScene = scene_name;
 
-  lv_label_set_text(SceneLabel, currentScene.c_str());
+  if (SceneLabel != NULL) {lv_label_set_text(SceneLabel, currentScene.c_str());}
 
   Serial.printf("scene: scene handling finished, new scene %s is active\r\n", currentScene.c_str());
 }
 
 void setLabelCurrentScene() {
-  lv_label_set_text(SceneLabel, currentScene.c_str());
+  if ((SceneLabel != NULL) && sceneExists(currentScene)) {
+    lv_label_set_text(SceneLabel, currentScene.c_str());
+  }
 }
