@@ -4,6 +4,7 @@
 #include "gui_general_and_keys/guiRegistry.h"
 #include "hardware/tft.h"
 #include "device_smarthome/device_smarthome.h"
+#include "device_denonAVR/device_denonAVR.h"
 #include "device_smarthome/gui_smarthome.h"
 #include "commandHandler.h"
 
@@ -21,27 +22,39 @@ static int32_t sliderAvalue = 0;
 static int32_t sliderBvalue = 0;
 
 // Smart Home Toggle Event handler
-static void smartHomeToggle_event_cb(lv_event_t* e){
+static void smartHomeToggle_event_cb(lv_event_t * e){
   std::string payload;
   if (lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED)) payload = "true";
   else payload = "false";
   // Publish an MQTT message based on the event user data  
   #if ENABLE_WIFI_AND_MQTT == 1
-  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_BULB1_SET, payload);
-  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_BULB2_SET, payload);
+  if((int)e->user_data == 1) {
+    if(payload == "true") {
+      executeCommand(SMARTHOME_MQTT_CINEMA_STAIRS_ON, payload);
+    }else {
+      executeCommand(SMARTHOME_MQTT_CINEMA_STAIRS_OFF, payload);
+    }
+  }
+  if((int)e->user_data == 2) {
+    if(payload == "true"){
+      executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_ON, payload);
+    } else {
+      executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_OFF, payload);
+    }
+  }
   #endif
 }
 
 // Smart Home Slider Event handler
-static void smartHomeSlider_event_cb(lv_event_t* e){
+static void smartHomeSlider_event_cb(lv_event_t * e){
   lv_obj_t * slider = lv_event_get_target(e);
   char payload[8];
   dtostrf(lv_slider_get_value(slider), 1, 2, payload);
   std::string payload_str(payload);
   // Publish an MQTT message based on the event user data
   #if ENABLE_WIFI_AND_MQTT == 1
-  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_BULB1_BRIGHTNESS_SET, payload);
-  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_BULB2_BRIGHTNESS_SET, payload);
+  if((int)e->user_data == 1) executeCommand(SMARTHOME_MQTT_CINEMA_STAIR_BRIGHTNESS_SET, payload);
+  if((int)e->user_data == 2) executeCommand(SMARTHOME_MQTT_CINEMA_MAIN_BRIGHTNESS_SET, payload);
   #endif
 }
 
@@ -54,7 +67,7 @@ void create_tab_content_smarthome(lv_obj_t* tab) {
 
   // Add a label, then a box for the light controls
   lv_obj_t* menuLabel = lv_label_create(tab);
-  lv_label_set_text(menuLabel, "Living Room");
+  lv_label_set_text(menuLabel, "Cinema");
 
   lv_obj_t* menuBox = lv_obj_create(tab);
   lv_obj_set_size(menuBox, lv_pct(100), 79);
@@ -68,7 +81,7 @@ void create_tab_content_smarthome(lv_obj_t* tab) {
   lv_obj_align(bulbIcon, LV_ALIGN_TOP_LEFT, 0, 0);
 
   menuLabel = lv_label_create(menuBox);
-  lv_label_set_text(menuLabel, "Floor Lamp");
+  lv_label_set_text(menuLabel, "Stair Lights");
   lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 22, 3);
   lightToggleA = lv_switch_create(menuBox);
   if (lightToggleAstate) {
@@ -108,7 +121,7 @@ void create_tab_content_smarthome(lv_obj_t* tab) {
   lv_obj_align(bulbIcon, LV_ALIGN_TOP_LEFT, 0, 0);
 
   menuLabel = lv_label_create(menuBox);
-  lv_label_set_text(menuLabel, "Ceiling Light");
+  lv_label_set_text(menuLabel, "Main Lights");
   lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 22, 3);
   lightToggleB = lv_switch_create(menuBox);
   if (lightToggleBstate) {

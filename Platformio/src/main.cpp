@@ -16,6 +16,7 @@
 #include "device_samsungTV/device_samsungTV.h"
 #include "device_yamahaAmp/device_yamahaAmp.h"
 #include "device_smarthome/device_smarthome.h"
+#include "device_denonAVR/device_denonAVR.h"
 #include "device_appleTV/device_appleTV.h"
 #include "device_keyboard_mqtt/device_keyboard_mqtt.h"
 #include "device_keyboard_ble/device_keyboard_ble.h"
@@ -66,6 +67,7 @@ void setup() {
   register_device_samsung();
   register_device_yamaha();
   register_device_smarthome();
+  register_device_denonavr();
   register_device_appleTV();
   #ifdef ENABLE_KEYBOARD_MQTT
   register_device_keyboard_mqtt();

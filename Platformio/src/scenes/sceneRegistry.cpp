@@ -2,6 +2,7 @@
 #include <string>
 #include "device_samsungTV/device_samsungTV.h"
 #include "device_yamahaAmp/device_yamahaAmp.h"
+#include "device_denonAVR/device_denonAVR.h"
 #include "scenes/sceneRegistry.h"
 #include "scenes/scene_allOff.h"
 #include "scenes/scene_TV.h"
@@ -30,8 +31,8 @@ std::map<char, std::string> key_commands_short_default {
                   /*{'l', COMMAND_UNKNOWN},*/ /*{'k', COMMAND_UNKNOWN},*/ /*{'r', COMMAND_UNKNOWN},*/
                                               /*{'d', COMMAND_UNKNOWN},*/
 /* {'b', COMMAND_UNKNOWN},*/                                                                 /*{'s', COMMAND_UNKNOWN},*/
-  {'+', YAMAHA_VOL_PLUS},                       {'m', YAMAHA_MUTE_TOGGLE},                   /*{'^', COMMAND_UNKNOWN},*/
-  {'-', YAMAHA_VOL_MINUS},                    /*{'e', COMMAND_UNKNOWN},*/                    /*{'v', COMMAND_UNKNOWN},*/
+  {'+', DENONAVR_MQTT_VOL_UP},                       {'m', DENONAVR_MQTT_MUTE},                   /*{'^', COMMAND_UNKNOWN},*/
+  {'-', DENONAVR_MQTT_VOL_DOWN},                    /*{'e', COMMAND_UNKNOWN},*/                    /*{'v', COMMAND_UNKNOWN},*/
   {'1', SCENE_TV},                {'2', SCENE_FIRETV},         {'3', SCENE_CHROMECAST},        {'4', YAMAHA_STANDARD},
 };
 
