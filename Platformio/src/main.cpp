@@ -9,6 +9,7 @@
 #include "hardware/user_led.h"
 #include "hardware/tft.h"
 #include "hardware/mqtt.h"
+#include "hardware/webserver.h"
 #include "hardware/infrared_sender.h"
 #include "hardware/infrared_receiver.h"
 #include "hardware/memoryUsage.h"
@@ -97,6 +98,7 @@ void setup() {
   // init WiFi - needs to be after gui because WifiLabel must be available
   #if ENABLE_WIFI_AND_MQTT == 1
   init_mqtt();
+  webserver_setup();
   #endif
 
   Serial.printf("Setup finished in %lu ms.\r\n", millis());
@@ -108,6 +110,9 @@ void loop() {
 
   // Update Backlight brightness
   update_backligthBrighness();
+  if(setupEnabled){
+    webserverHandleClient();
+  }
   // Update LVGL UI
   gui_loop();
   // Blink debug LED at 1 Hz
@@ -122,7 +127,11 @@ void loop() {
   // Refresh IMU data at 10Hz
   static unsigned long IMUTaskTimer = millis();
   if(millis() - IMUTaskTimer >= 100){
+    if(setupEnabled){
+
+    } else {
     check_activity();
+    }
     IMUTaskTimer = millis();
   }
 
