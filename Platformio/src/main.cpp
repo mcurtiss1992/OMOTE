@@ -128,9 +128,10 @@ void loop() {
   static unsigned long IMUTaskTimer = millis();
   if(millis() - IMUTaskTimer >= 100){
     if(setupEnabled){
-
-    } else {
-    check_activity();
+    }
+    else
+    {
+      check_activity();
     }
     IMUTaskTimer = millis();
   }

@@ -189,6 +189,7 @@ void webserver_setup()
     Serial.println(WiFi.localIP());
 
     server.on("/", handle_OnConnect);
+    server.on("/finishSetup", handle_FinishSetup);
     server.on("/wifi", handle_WiFiSettings);
     server.on("/devices", handle_DeviceSettings);
     server.on("/scenes", handle_SceneSettings);
@@ -205,6 +206,10 @@ void webserverHandleClient()
 void handle_WiFiSettings()
 {
     server.send(200, "text/html", SendWifiPage());
+}
+void handle_FinishSetup()
+{
+    server.send(200, "text/html", SendFinishSetupPage());
 }
 void handle_DeviceSettings()
 {
@@ -232,17 +237,17 @@ void handleEditJson()
         String filename = server.arg("filename");
         // Check if the file exists. If not, initialize content as empty.
         String fileContent = SPIFFS.exists(("/" + filename).c_str()) ? readFile(SPIFFS, ("/" + filename).c_str()) : "{}";
-        DynamicJsonDocument jsonData(4096); // Adjust size as needed
+        JsonDocument jsonData; // Adjust size as needed
         deserializeJson(jsonData, fileContent);
-
+        fileContent.clear();
         // Serialize JSON document for display
         String stringData;
         serializeJsonPretty(jsonData, stringData); // Correctly serialize JSON to string
 
         // Your existing code to construct HTML form...
         String htmlForm = "<textarea name='jsonContent' rows='10' cols='50'>" + stringData + "</textarea>";
-
-        String htmlPage = siteHeader;
+        stringData.clear();
+        String htmlPage = "<!DOCTYPE html><html><body>";
 
         htmlPage +=       "<h2>Edit JSON File</h2>"
                           "<form action='/editJson' method='post'>"
@@ -252,7 +257,9 @@ void handleEditJson()
                           "<input type='submit' name='action' value='Delete' onclick=\"return confirm('Are you sure?');\">"
                           "</form></body></html>";
         server.send(200, "text/html; charset=UTF-8", htmlPage);
-        htmlPage = "";
+        server.begin();
+        htmlPage.clear();
+        htmlForm.clear();
         jsonData.clear();
     }
     else if (server.method() == HTTP_POST)
@@ -274,9 +281,9 @@ void handleEditJson()
             }
             String jsonContent = server.arg("jsonContent");
 
-            DynamicJsonDocument doc(4096); // Adjust size as needed
+            JsonDocument doc; // Adjust size as needed
             DeserializationError error = deserializeJson(doc, jsonContent);
-
+            jsonContent.clear();
             if (error)
             {
                 // Respond with an error message if JSON parsing fails
@@ -289,8 +296,9 @@ void handleEditJson()
             serializeJson(doc, updatedJson);
 
             writeFile(SPIFFS, ("/" + filename).c_str(), updatedJson.c_str()); // Save validated and updated JSON
-
+            updatedJson.clear();
             server.send(200, "text/html", "<h2>File Updated</h2><a href='/listJson'>JSON List</a>");
+            server.begin();
             doc.clear();
         }
         else if (action == "Delete")
@@ -378,6 +386,16 @@ String SendHomepage()
 {
     String ptr = siteHeader;
     ptr += "<h3>Welcome to OMOTE Config</h3>\n";
+    ptr += "</body>\n";
+    ptr += "</html>\n";
+    return ptr;
+}
+
+String SendFinishSetupPage()
+{
+    setupEnabled = false;
+    String ptr = siteHeader;
+    ptr += "<h3>Successfully Finished Setup. If you'd like to return to setup, please throw the toggle on your remote.</h3>\n";
     ptr += "</body>\n";
     ptr += "</html>\n";
     return ptr;

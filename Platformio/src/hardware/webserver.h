@@ -16,6 +16,7 @@ const char siteHeader[] PROGMEM = "<!DOCTYPE html> <html>\n<head><meta name=\"vi
 void webserver_setup(void);
 void handle_OnConnect(void);
 void handle_WiFiSettings(void);
+void handle_FinishSetup(void);
 void handle_DeviceSettings(void);
 void handle_SceneSettings(void);
 void handleEditJson(void);
@@ -26,6 +27,7 @@ String SendHomepage(void);
 String SendWifiPage(void);
 String SendDevicePage(void);
 String SendScenePage(void);
+String SendFinishSetupPage(void);
 #endif
 
 #endif /*__MQTT_H__*/
