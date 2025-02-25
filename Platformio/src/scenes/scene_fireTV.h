@@ -1,9 +1,12 @@
-#ifndef __SCENE_FIRETV_H__
-#define __SCENE_FIRETV_H__
+#pragma once
 
-#define SCENE_FIRETV      "Scene_firetv"
+#include <string>
+#include <stdint.h>
+
+extern uint16_t SCENE_FIRETV;
+// FORCE sends the start sequence again even if scene is already active
+extern uint16_t SCENE_FIRETV_FORCE;
 
 extern std::string scene_name_fireTV;
+void register_scene_fireTV_commands(void);
 void register_scene_fireTV(void);
-
-#endif /*__SCENE_FIRETV_H__*/
