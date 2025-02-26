@@ -4,6 +4,7 @@
 #include "applicationInternal/commandHandler.h"
 // devices
 #include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
+#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
 #include "devices/misc/device_smarthome/gui_smarthome.h"
 // scenes
 #include "scene__default.h"
@@ -54,8 +55,8 @@ void register_scene_defaultKeys(void) {
                       {KEY_LEFT,  GUI_PREV  },       /*  {KEY_OK,    COMMAND_UNKNOWN  },*/  {KEY_RIGHT, GUI_NEXT  },
                                                      /*  {KEY_DOWN,  COMMAND_UNKNOWN  },*/
     {KEY_BACK,  SCENE_SELECTION  },                                                                        /*{KEY_SRC,   COMMAND_UNKNOWN  },*/
-    {KEY_VOLUP, YAMAHA_VOL_PLUS  },                      {KEY_MUTE,  YAMAHA_MUTE_TOGGLE},                  /*{KEY_CHUP,  COMMAND_UNKNOWN  },*/
-    {KEY_VOLDO, YAMAHA_VOL_MINUS },                      {KEY_REC,   SCENE_BACK_TO_PREVIOUS_GUI_LIST  },   /*{KEY_CHDOW, COMMAND_UNKNOWN  },*/
+    {KEY_VOLUP, DENONAVR_MQTT_VOL_UP  },                      {KEY_MUTE,  DENONAVR_MQTT_MUTE},                  /*{KEY_CHUP,  COMMAND_UNKNOWN  },*/
+    {KEY_VOLDO, DENONAVR_MQTT_VOL_DOWN },                      {KEY_REC,   SCENE_BACK_TO_PREVIOUS_GUI_LIST  },   /*{KEY_CHDOW, COMMAND_UNKNOWN  },*/
     {KEY_RED,   SCENE_TV_FORCE   },    {KEY_GREEN, SCENE_FIRETV_FORCE},  {KEY_YELLO, SCENE_CHROMECAST_FORCE},{KEY_BLUE,  SCENE_APPLETV_FORCE},
   };
   

@@ -13,7 +13,7 @@ LV_IMG_DECLARE(low_brightness);
 lv_obj_t* objBattSettingsVoltage;
 lv_obj_t* objBattSettingsPercentage;
 //lv_obj_t* objBattSettingsIscharging;
-
+bool setupEnabled = false;
 // Slider Event handler
 static void bl_slider_event_cb(lv_event_t* e){
   lv_obj_t* slider = lv_event_get_target(e);
@@ -50,6 +50,11 @@ static void timout_event_cb(lv_event_t* e){
 // show memory usage event handler
 static void showMemoryUsage_event_cb(lv_event_t* e) {
   setShowMemoryUsage(lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED));
+}
+
+// show memory usage event handler
+static void setupMode_event_cb(lv_event_t* e) {
+  setupEnabled = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
 }
 
 void create_tab_content_settings(lv_obj_t* tab) {
@@ -195,6 +200,23 @@ void create_tab_content_settings(lv_obj_t* tab) {
   } else {
     // lv_obj_clear_state(memoryUsageToggle, LV_STATE_CHECKED);
   }
+    // Setup Mode ------------------------------------------------------------------------
+    menuLabel = lv_label_create(tab);
+    lv_label_set_text(menuLabel, "Setup");
+    menuBox = lv_obj_create(tab);
+    lv_obj_set_size(menuBox, lv_pct(100), 48);
+    lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
+    lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
+    
+    menuLabel = lv_label_create(menuBox);
+    lv_label_set_text(menuLabel, "Toggle Settup Mode");
+    lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 0, 3);
+    lv_obj_t* setupModeToggle = lv_switch_create(menuBox);
+    lv_obj_set_size(setupModeToggle, 40, 22);
+    lv_obj_align(setupModeToggle, LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_set_style_bg_color(setupModeToggle, lv_color_hex(0x505050), LV_PART_MAIN);
+    lv_obj_add_event_cb(setupModeToggle, setupMode_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+  
 }
 
 void notify_tab_before_delete_settings(void) {

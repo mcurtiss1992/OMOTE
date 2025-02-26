@@ -15,8 +15,8 @@
 #include "devices/TV/device_samsungTV/device_samsungTV.h"
 //#include "devices/TV/device_lgTV/device_lgTV.h"
 //   AV receiver
-#include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
-//#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
+//#include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
+#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
 //#include "devices/AVreceiver/device_lgsoundbar/device_lgsoundbar.h"
 //   media player
 #include "devices/mediaPlayer/device_appleTV/device_appleTV.h"
@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
   register_device_samsungTV();
 //  register_device_lgTV();
   //   AV receiver
-  register_device_yamahaAmp();
-  //register_device_denonAvr();
+  //register_device_yamahaAmp();
+  register_device_denonAvr();
   //register_device_lgsoundbar();
   //   media player
   register_device_appleTV();
@@ -151,6 +151,7 @@ int main(int argc, char *argv[]) {
   // init WiFi - needs to be after init_gui() because WifiLabel must be available
   #if (ENABLE_WIFI_AND_MQTT == 1)
   init_mqtt();
+  init_webserver_hal();
   #endif
 
   omote_log_i("Setup finished in %lu ms.\r\n", millis());
@@ -179,6 +180,9 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
   // --- do as often as possible --------------------------------------------------------
   // update backlight brightness. Fade in on startup, dim before going to sleep
   update_backligthBrighness();
+  if(setupEnabled){
+    handleRequest();
+  }
   // keypad handling: get key states from hardware and process them
   keypad_loop();
   // process IR receiver, if activated
@@ -196,9 +200,22 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
   // Refresh IMU data (motion detection) every 100 ms
   // If no action (key, TFT or motion), then go to sleep
   if(millis() - *pIMUTaskTimer >= 100){
+
+
+
     *pIMUTaskTimer = millis();
 
-    check_activity();
+    #if defined(ARDUINO)
+      if(setupEnabled){
+
+      } else {
+      check_activity();
+      }
+    #else
+      check_activity();
+    #endif
+
+    
 
   }
 

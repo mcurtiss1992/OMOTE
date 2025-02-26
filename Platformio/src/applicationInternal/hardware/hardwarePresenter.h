@@ -122,6 +122,8 @@ void init_lvgl_hardware();
 // --- WiFi / MQTT ------------------------------------------------------------
 #if (ENABLE_WIFI_AND_MQTT == 1)
 void init_mqtt(void);
+void init_webserver_hal(void);
+void handleRequest(void);
 // used by "commandHandler.cpp", "sleep.cpp"
 bool getIsWifiConnected();
 void mqtt_loop();

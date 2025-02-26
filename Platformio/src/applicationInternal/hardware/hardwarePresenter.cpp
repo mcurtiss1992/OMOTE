@@ -222,6 +222,15 @@ void init_mqtt(void) {
   set_announceSubscribedTopics_cb_HAL(receiveMQTTmessage_cb);
   init_mqtt_HAL();
 }
+
+void init_webserver_hal(void){
+  webserver_setup();
+}
+
+void handleRequest(void){
+  webserverHandleClient();
+}
+
 // used by "commandHandler.cpp", "sleep.cpp"
 bool getIsWifiConnected() {
   return getIsWifiConnected_HAL();
