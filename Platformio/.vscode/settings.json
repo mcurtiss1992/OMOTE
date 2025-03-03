@@ -49,7 +49,19 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "cinttypes": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "unordered_set": "cpp",
+        "ratio": "cpp",
+        "set": "cpp",
+        "fstream": "cpp",
+        "iomanip": "cpp",
+        "iostream": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     },
     "cmake.sourceDirectory": "${workspaceFolder}/.pio/libdeps/esp32/Adafruit BusIO",
     "C_Cpp.errorSquiggles": "disabled"

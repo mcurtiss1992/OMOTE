@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
   // register commands for the devices
   register_specialCommands();
   //   TV
-  register_device_samsungTV();
+  //register_device_samsungTV();
 //  register_device_lgTV();
   //   AV receiver
   //register_device_yamahaAmp();
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
   register_scene_appleTV();
   register_scene_allOff();
   // Only show these scenes on the sceneSelection gui. If you don't set this explicitely, by default all registered scenes are shown.
-  set_scenes_on_sceneSelectionGUI({scene_name_TV, scene_name_fireTV, scene_name_chromecast, scene_name_appleTV});
+  //set_scenes_on_sceneSelectionGUI({scene_name_TV, scene_name_fireTV, scene_name_chromecast, scene_name_appleTV});
 
   // init GUI - will initialize tft, touch and lvgl
   init_gui();

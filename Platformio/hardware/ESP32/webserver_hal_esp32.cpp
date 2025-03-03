@@ -8,6 +8,8 @@
 #include <ArduinoJson.h>
 #include "webserver_hal_esp32.h"
 #include "secrets.h"
+#include "dynamicConfig/devices_dynamic.h"
+#include "dynamicConfig/scenes_dynamic.h"
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
@@ -55,6 +57,7 @@ String listDir(fs::FS &fs, const char *dirname, uint8_t levels)
         }
         file = root.openNextFile();
     }
+    file.flush();
     return data;
 }
 
@@ -192,6 +195,10 @@ void webserver_setup()
     server.on("/scenes", handle_SceneSettings);
     server.on("/editJson", HTTP_ANY, handleEditJson); // Handle both GET and POST
     server.on("/listJson", HTTP_GET, handleListJsonFiles);
+    server.on("/getJson", HTTP_GET, handleGetJson);
+    server.on("/postJson", HTTP_POST, handlePutJson);
+    server.on("/registerDynamicDevices", HTTP_GET, handleDynamicDeviceRegistration);
+    server.on("/registerDynamicScenes", HTTP_GET, handleDynamicSceneRegistration);
     server.onNotFound(handle_NotFound);
     server.begin();
     Serial.println("HTTP server started");
@@ -202,24 +209,38 @@ void webserverHandleClient()
 }
 void handle_WiFiSettings()
 {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", SendWifiPage());
 }
 void handle_FinishSetup()
 {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", SendFinishSetupPage());
 }
 void handle_DeviceSettings()
 {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", SendDevicePage());
 }
 void handle_SceneSettings()
 {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", SendScenePage());
 }
 void handle_OnConnect()
 {
-
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", SendHomepage());
+}
+
+void handleDynamicDeviceRegistration(){
+    register_dynamic_devices();
+    server.send(200, "text/html", "Registered Your Devices");
+}
+
+void handleDynamicSceneRegistration(){
+    register_dynamic_scenes();
+    server.send(200, "text/html", "Registered Your Scenes");
 }
 
 void handleEditJson()
@@ -253,8 +274,10 @@ void handleEditJson()
                           "<input type='submit' name='action' value='Save'>"
                           "<input type='submit' name='action' value='Delete' onclick=\"return confirm('Are you sure?');\">"
                           "</form></body></html>";
+        server.sendHeader("Access-Control-Allow-Origin", "*");
         server.send(200, "text/html; charset=UTF-8", htmlPage);
         server.begin();
+        filename.clear();
         htmlPage.clear();
         htmlForm.clear();
         jsonData.clear();
@@ -274,6 +297,8 @@ void handleEditJson()
             if (!server.hasArg("jsonContent"))
             {
                 server.send(400, "text/html", "Missing JSON content");
+                filename.clear();
+                action.clear();
                 return;
             }
             String jsonContent = server.arg("jsonContent");
@@ -285,6 +310,7 @@ void handleEditJson()
             {
                 // Respond with an error message if JSON parsing fails
                 server.send(400, "text/html", "Invalid JSON data");
+                doc.clear();
                 return;
             }
 
@@ -294,6 +320,7 @@ void handleEditJson()
 
             writeFile(SPIFFS, ("/" + filename).c_str(), updatedJson.c_str()); // Save validated and updated JSON
             updatedJson.clear();
+            server.sendHeader("Access-Control-Allow-Origin", "*");
             server.send(200, "text/html", "<h2>File Updated</h2><a href='/listJson'>JSON List</a>");
             server.begin();
             doc.clear();
@@ -301,6 +328,7 @@ void handleEditJson()
         else if (action == "Delete")
         {
             deleteFile(SPIFFS, ("/" + filename).c_str());
+            server.sendHeader("Access-Control-Allow-Origin", "*");
             server.send(200, "text/html", "<h2>File Deleted</h2><a href='/listJson'>JSON List</a>");
         }
     }
@@ -330,12 +358,107 @@ void handleListJsonFiles()
 
     html += "</ul>";
     html += "</body></html>";
-
+    server.sendHeader("Access-Control-Allow-Origin", "*");
     server.send(200, "text/html", html);
+    root.flush();
+    file.flush();
 }
 void handle_NotFound()
 {
     server.send(404, "text/plain", "Not found");
+}
+
+void handleGetJson(){
+    if (server.method() == HTTP_GET)
+    {
+        if (!server.hasArg("filename"))
+        {
+            server.send(400, "text/html", "Missing filename");
+            return;
+        }
+        String filename = server.arg("filename");
+        // Check if the file exists. If not, initialize content as empty.
+        String fileContent = SPIFFS.exists(("/" + filename).c_str()) ? readFile(SPIFFS, ("/" + filename).c_str()) : "{}";
+        JsonDocument jsonData; // Adjust size as needed
+        deserializeJson(jsonData, fileContent);
+        fileContent.clear();
+        filename.clear();
+        // Serialize JSON document for display
+        String stringData;
+        serializeJsonPretty(jsonData, stringData); // Correctly serialize JSON to string
+
+        server.sendHeader("Access-Control-Allow-Origin", "*");
+        server.send(200, "text/json; charset=UTF-8", stringData);
+        server.begin();
+        jsonData.clear();
+        stringData.clear();
+    }
+    else
+    {
+        server.send(405, "text/html", "Method Not Allowed");
+    }
+}
+
+void handlePutJson(){
+    if (server.method() == HTTP_POST)
+    {
+        if (!server.hasArg("filename") || !server.hasArg("action"))
+        {
+            server.send(400, "text/html", "Missing data");
+            return;
+        }
+        String filename = server.arg("filename");
+        String action = server.arg("action");
+
+        if (action == "Save")
+        {
+            if (!server.hasArg("jsonContent"))
+            {
+                server.send(400, "text/html", "Missing JSON content");
+                filename.clear();
+                action.clear();
+                return;
+            }
+            String jsonContent = server.arg("jsonContent");
+
+            JsonDocument doc; // Adjust size as needed
+            DeserializationError error = deserializeJson(doc, jsonContent);
+            jsonContent.clear();
+            if (error)
+            {
+                // Respond with an error message if JSON parsing fails
+                server.send(400, "text/html", "Invalid JSON data");
+                doc.clear();
+                filename.clear();
+                action.clear();
+                return;
+            }
+
+            // Serialize the validated JSON document back to a string
+            String updatedJson;
+            serializeJson(doc, updatedJson);
+
+            writeFile(SPIFFS, ("/" + filename).c_str(), updatedJson.c_str()); // Save validated and updated JSON
+            updatedJson.clear();
+            server.sendHeader("Access-Control-Allow-Origin", "*");
+            server.send(200, "text/html", "File Updated");
+            server.begin();
+            doc.clear();
+            filename.clear();
+            action.clear();
+        }
+        else if (action == "Delete")
+        {
+            deleteFile(SPIFFS, ("/" + filename).c_str());
+            server.sendHeader("Access-Control-Allow-Origin", "*");
+            server.send(200, "text/html", "File Deleted");
+            filename.clear();
+        }
+    }
+    else
+    {
+        server.send(405, "text/html", "Method Not Allowed");
+    }
 }
 
 String SendWifiPage()
@@ -366,6 +489,7 @@ String SendDevicePage()
     ptr += "</body>\n";
     ptr += "</html>\n";
     readData.clear();
+    json.clear();
     return ptr;
 }
 
