@@ -7,6 +7,7 @@
 #include "../commandHandler.h"
 // for registering the callback to show WiFi status
 #include "applicationInternal/gui/guiBase.h"
+#include "lvgl.h"
 
 // This include of "hardwareLayer.h" is the one and only link to folder "hardware". The file "hardwareLayer.h" does the differentiation between ESP32 and Windows/Linux.
 // "hardwareLayer.h" includes all the other hardware header files as well. So everything from all hardware header files is available here - and only here.
@@ -229,6 +230,22 @@ void init_webserver_hal(void){
 
 void handleRequest(void){
   webserverHandleClient();
+}
+
+void registerDynamicDevices(void){
+  register_dynamic_devices();
+}
+
+void registerDynamicScenes(void){
+  register_dynamic_scenes();
+}
+
+void registerDynamicGuis(void){
+  register_dynamic_guis();
+}
+
+void setCurrentDynamicTab(lv_obj_t* dynTab){
+  set_current_dynamic_tab(dynTab);
 }
 
 // used by "commandHandler.cpp", "sleep.cpp"

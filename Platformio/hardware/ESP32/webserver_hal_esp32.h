@@ -24,6 +24,7 @@ void handleGetJson(void);
 void handlePutJson(void);
 void handleDynamicDeviceRegistration(void);
 void handleDynamicSceneRegistration(void);
+void handleDynamicGuiRegistration(void);
 void handle_NotFound(void);
 void webserverHandleClient(void);
 String SendHomepage(void);

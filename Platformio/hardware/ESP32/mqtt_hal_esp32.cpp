@@ -67,6 +67,7 @@ void init_mqtt_HAL(void) {
 }
 
 std::string subscribeTopicOMOTEtest = "OMOTE/test";
+std::string subscribeTopicOMOTEConfig = "OMOTE/config";
 // For connecting to one or several BLE clients
 std::string subscribeTopicOMOTE_BLEstartAdvertisingForAll        = "OMOTE/BLE/startAdvertisingForAll";
 std::string subscribeTopicOMOTE_BLEstartAdvertisingWithWhitelist = "OMOTE/BLE/startAdvertisingWithWhitelist";
@@ -83,7 +84,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   std::string strPayload(reinterpret_cast<const char *>(payload), length);
   Serial.printf("MQTT: received topic %s with payload %s\r\n", topicReceived.c_str(), strPayload.c_str());
 
-  if (topicReceived == subscribeTopicOMOTEtest) {
+  if(topicReceived == subscribeTopicOMOTEConfig){
+    
+  }
+  else if (topicReceived == subscribeTopicOMOTEtest) {
     // Do whatever you want here, if it is ESP32 hardware related.
     // ...
 

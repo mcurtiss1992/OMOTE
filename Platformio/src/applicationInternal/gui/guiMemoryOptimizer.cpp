@@ -97,12 +97,14 @@ void notify_active_tabs_before_delete(t_gui_state *gui_state) {
     // For deletion, do not use the gui_list_index, but the name of the gui.
     // The gui_list might have changed (when switching from a scene specific list to the main list or vice versa), so index could have changed as well.
     nameOfTab = gui_state->gui_on_tab[index].GUIname;
+    lv_obj_t* tabT = gui_state->gui_on_tab[index].tab;
     if (nameOfTab == "") {
       omote_log_w("    Will not notify tab %d about deletion because it is not set\r\n", index);
     } else if (registered_guis_byName_map.count(nameOfTab) == 0) {
       omote_log_w("    Can not notify tab %d about deletion because name \"%s\" was not found in registry\r\n", index, nameOfTab.c_str());
     } else {
       omote_log_d("    Will notify tab %d with name \"%s\" about deletion\r\n", index, nameOfTab.c_str());
+      setCurrentDynamicTab(tabT);
       registered_guis_byName_map.at(nameOfTab).this_notify_tab_before_delete();
     }
   }
@@ -194,6 +196,16 @@ void create_new_tab(lv_obj_t* tabview, t_gui_on_tab *gui_on_tab) {
   }
 }
 
+std::string getGuiNameByTab(lv_obj_t* tab) {
+  // Loop through the known tabs in our global gui_state.
+  for (int i = 0; i < 3; i++) {
+      if (gui_state.gui_on_tab[i].tab == tab) {
+          return gui_state.gui_on_tab[i].GUIname;
+      }
+  }
+  // If not found, return an empty string.
+  return "";
+}
 // create up to three tabs and the content of the tabs
 /*
 example: gui_list: 0 1 2 3 4
@@ -245,7 +257,7 @@ void setGUIlistIndicesToBeShown_afterSlide(t_gui_state *gui_state) {
   int oldListIndex = -1;
  
   if (gui_state->oldTabID > gui_state->activeTabID) {
-    // swipe to previous item in list
+    // swipe to previo())us item in list
     omote_log_d("  Will swipe to previous item in list\r\n");
     oldListIndex = gui_state->gui_on_tab[1].gui_list_index_previous;
     if ((oldListIndex == 1)) {

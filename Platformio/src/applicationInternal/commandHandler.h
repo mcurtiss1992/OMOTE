@@ -108,7 +108,7 @@ struct commandData {
   commandHandlers commandHandler;
   std::list<std::string> commandPayloads;
 };
-
+uint16_t getComID(void);
 // register a command and give it a command id
 void register_command(uint16_t *command, commandData aCommandData);
 // only get a unique ID. used by KEYBOARD_DUMMY and COMMAND_UNKNOWN

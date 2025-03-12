@@ -3,6 +3,7 @@
 #include <list>
 #include <string>
 #include "applicationInternal/hardware/arduinoLayer.h"
+#include "lvgl.h"
 
 // --- hardware general -------------------------------------------------------
 void init_hardware_general(void);
@@ -124,6 +125,10 @@ void init_lvgl_hardware();
 void init_mqtt(void);
 void init_webserver_hal(void);
 void handleRequest(void);
+void registerDynamicDevices(void);
+void registerDynamicScenes(void);
+void registerDynamicGuis(void);
+void setCurrentDynamicTab(lv_obj_t* dynTab);
 // used by "commandHandler.cpp", "sleep.cpp"
 bool getIsWifiConnected();
 void mqtt_loop();

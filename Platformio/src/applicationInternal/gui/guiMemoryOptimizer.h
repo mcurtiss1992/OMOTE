@@ -18,7 +18,7 @@ void gui_memoryOptimizer_navigateToLastActiveGUIofPreviousGUIlist(lv_obj_t** tab
 int gui_memoryOptimizer_getActiveTabID();
 bool gui_memoryOptimizer_isTabIDInMemory(int tabID);
 bool gui_memoryOptimizer_isGUInameInMemory(std::string GUIname);
-
+std::string getGuiNameByTab(lv_obj_t* tab);
 std::string gui_memoryOptimizer_getActiveSceneName();
 void gui_memoryOptimizer_setActiveSceneName(std::string aSceneName);
 std::string gui_memoryOptimizer_getActiveGUIname();

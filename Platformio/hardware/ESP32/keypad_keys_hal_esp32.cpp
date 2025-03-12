@@ -69,14 +69,22 @@ struct keypad_key {
 keypad_key keys[LIST_MAX];
 
 void keys_getKeys_HAL(void* ptr) {
+  // Update the keypad state from hardware
   customKeypad.getKeys();
-
-  for(int i=0; i < LIST_MAX; i++) {
-    (*(keypad_key*)ptr).kchar        = customKeypad.key[i].kchar;
-    (*(keypad_key*)ptr).kcode        = customKeypad.key[i].kcode;
-    (*(keypad_key*)ptr).kstate       = (keypad_keyStates)(customKeypad.key[i].kstate);
-    (*(keypad_key*)ptr).stateChanged = customKeypad.key[i].stateChanged;
-    // https://www.geeksforgeeks.org/void-pointer-c-cpp/
-    ptr = (void *) ((intptr_t)(ptr) + sizeof(keypad_key));
+  
+  // Cast the void pointer to our keypad_key pointer
+  keypad_key* keyArray = (keypad_key*) ptr;
+  if (keyArray == nullptr) {
+    Serial.println("Error: NULL pointer passed to keys_getKeys_HAL!");
+    return;
+  }
+  
+  // Copy each key from customKeypad.key into the provided array
+  for (int i = 0; i < LIST_MAX; i++) {
+    // (Optionally, you can add a check here if customKeypad.key has enough entries)
+    keyArray[i].kchar        = customKeypad.key[i].kchar;
+    keyArray[i].kcode        = customKeypad.key[i].kcode;
+    keyArray[i].kstate       = (keypad_keyStates)(customKeypad.key[i].kstate);
+    keyArray[i].stateChanged = customKeypad.key[i].stateChanged;
   }
 }

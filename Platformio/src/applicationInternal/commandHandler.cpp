@@ -68,6 +68,10 @@ void register_command(uint16_t *command, commandData aCommandData) {
 
   commands[*command] = aCommandData;
 }
+
+uint16_t getComID(void){
+  return uniqueCommandID;
+}
 // only get a unique ID. used by KEYBOARD_DUMMY and COMMAND_UNKNOWN
 void get_uniqueCommandID(uint16_t *command) {
   *command = uniqueCommandID;

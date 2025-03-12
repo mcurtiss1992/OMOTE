@@ -10,29 +10,27 @@
 #include "secrets.h"
 #include "dynamicConfig/devices_dynamic.h"
 #include "dynamicConfig/scenes_dynamic.h"
+#include "dynamicConfig/guis_dynamic.h"
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
 WebServer server(80);
 
-
-String dirs = "";
-
 String listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
-    String data = "";
-    data += "Listing directory: %s\r\n";
+    String data = F("Listing directory: ");
     data += dirname;
+    data += F("\r\n");
 
     File root = fs.open(dirname);
     if (!root)
     {
-        data += "- failed to open directory";
+        data += F("- failed to open directory");
         return data;
     }
     if (!root.isDirectory())
     {
-        data += " - not a directory";
+        data += F(" - not a directory");
         return data;
     }
 
@@ -41,30 +39,30 @@ String listDir(fs::FS &fs, const char *dirname, uint8_t levels)
     {
         if (file.isDirectory())
         {
-            data += "  DIR : ";
+            data += F("  DIR : ");
             data += file.name();
+            data += F("\r\n");
             if (levels)
             {
-                listDir(fs, file.path(), levels - 1);
+                data += listDir(fs, file.path(), levels - 1);
             }
         }
         else
         {
-            data += "  FILE: ";
+            data += F("  FILE: ");
             data += file.name();
-            data += "\tSIZE: ";
-            data += file.size();
+            data += F("\tSIZE: ");
+            data += String(file.size());
+            data += F("\r\n");
         }
         file = root.openNextFile();
     }
-    file.flush();
     return data;
 }
 
 // Helper function to insert a value into a JSON document based on a path
 void insertJsonValue(JsonDocument &root, const String &path, const String &value)
 {
-    // Split the path into components
     int startIndex = 0;
     int endIndex = path.indexOf('[');
     JsonVariant current = root;
@@ -86,75 +84,75 @@ void insertJsonValue(JsonDocument &root, const String &path, const String &value
     }
 }
 
+// Use file.readString() to simplify file reading and reduce extra allocations
 String readFile(fs::FS &fs, const char *path)
 {
     String outContent = "";
-    Serial.printf("Reading file: %s\r\n", path);
+    Serial.print(F("Reading file: "));
+    Serial.println(path);
     File file = fs.open(path);
     if (!file || file.isDirectory())
     {
-        Serial.println("- failed to open file for reading");
-        outContent = "- failed to open file for reading";
+        Serial.println(F("- failed to open file for reading"));
+        outContent = F("- failed to open file for reading");
         return outContent;
     }
-    Serial.println("- read from file:");
-    // Create a buffer to hold file content + 1 for null terminator
-    size_t fileSize = file.size();
-    std::unique_ptr<char[]> buf(new char[fileSize + 1]);
-
-    file.readBytes(buf.get(), fileSize);
-    // Null-terminate the string
-    buf[fileSize] = '\0';
-    outContent = String(buf.get());
+    Serial.println(F("- read from file:"));
+    outContent = file.readString();
+    // Serial.println(outContent);
     file.close();
-    Serial.println(outContent);
     return outContent;
 }
 
 void writeFile(fs::FS &fs, const char *path, const char *message)
 {
-    Serial.printf("Writing file: %s\r\n", path);
+    Serial.print(F("Writing file: "));
+    Serial.println(path);
 
     File file = fs.open(path, FILE_WRITE);
     if (!file)
     {
-        Serial.println("- failed to open file for writing");
+        Serial.println(F("- failed to open file for writing"));
         return;
     }
     if (file.print(message))
     {
-        Serial.println("- file written");
+        Serial.println(F("- file written"));
     }
     else
     {
-        Serial.println("- write failed");
+        Serial.println(F("- write failed"));
     }
     file.close();
 }
 
 void renameFile(fs::FS &fs, const char *path1, const char *path2)
 {
-    Serial.printf("Renaming file %s to %s\r\n", path1, path2);
+    Serial.print(F("Renaming file "));
+    Serial.print(path1);
+    Serial.print(F(" to "));
+    Serial.println(path2);
     if (fs.rename(path1, path2))
     {
-        Serial.println("- file renamed");
+        Serial.println(F("- file renamed"));
     }
     else
     {
-        Serial.println("- rename failed");
+        Serial.println(F("- rename failed"));
     }
 }
 
 void deleteFile(fs::FS &fs, const char *path)
 {
-    Serial.printf("Deleting file: %s\r\n", path);
+    Serial.print(F("Deleting file: "));
+    Serial.println(path);
     if (fs.remove(path))
     {
-        Serial.println("- file deleted");
+        Serial.println(F("- file deleted"));
     }
     else
     {
-        Serial.println("- delete failed");
+        Serial.println(F("- delete failed"));
     }
 }
 
@@ -164,83 +162,103 @@ void webserver_setup()
     delay(100);
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
     {
-        Serial.println("SPIFFS Mount Failed");
+        Serial.println(F("SPIFFS Mount Failed"));
         return;
     }
-    listDir(SPIFFS, "/", 0);
+    Serial.println(listDir(SPIFFS, "/", 0));
 
-
-
-    Serial.println("Connecting to ");
+    Serial.println(F("Connecting to "));
     Serial.println(WIFI_SSID);
 
-    // connect to your local wi-fi network
+    // Connect to WiFi
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-    // check wi-fi is connected to wi-fi network
     while (WiFi.status() != WL_CONNECTED)
     {
         delay(1000);
-        Serial.print(".");
+        Serial.print(F("."));
     }
-    Serial.println("");
-    Serial.println("WiFi connected..!");
-    Serial.print("Got IP: ");
+    Serial.println();
+    Serial.println(F("WiFi connected..!"));
+    Serial.print(F("Got IP: "));
     Serial.println(WiFi.localIP());
 
+    // Setup routes
     server.on("/", handle_OnConnect);
     server.on("/finishSetup", handle_FinishSetup);
     server.on("/wifi", handle_WiFiSettings);
     server.on("/devices", handle_DeviceSettings);
     server.on("/scenes", handle_SceneSettings);
-    server.on("/editJson", HTTP_ANY, handleEditJson); // Handle both GET and POST
+    server.on("/editJson", HTTP_ANY, handleEditJson);
     server.on("/listJson", HTTP_GET, handleListJsonFiles);
     server.on("/getJson", HTTP_GET, handleGetJson);
     server.on("/postJson", HTTP_POST, handlePutJson);
     server.on("/registerDynamicDevices", HTTP_GET, handleDynamicDeviceRegistration);
     server.on("/registerDynamicScenes", HTTP_GET, handleDynamicSceneRegistration);
+    server.on("/registerDynamicGuis", HTTP_GET, handleDynamicGuiRegistration);
     server.onNotFound(handle_NotFound);
     server.begin();
-    Serial.println("HTTP server started");
+    Serial.println(F("HTTP server started"));
 }
+
 void webserverHandleClient()
 {
     server.handleClient();
 }
+
 void handle_WiFiSettings()
 {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", SendWifiPage());
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.send(200, F("text/html"), SendWifiPage());
+    server.sendHeader("Connection", "close");
 }
+
 void handle_FinishSetup()
 {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", SendFinishSetupPage());
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.send(200, F("text/html"), SendFinishSetupPage());
+    server.sendHeader("Connection", "close");
 }
+
 void handle_DeviceSettings()
 {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", SendDevicePage());
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.send(200, F("text/html"), SendDevicePage());
+    server.sendHeader("Connection", "close");
 }
+
 void handle_SceneSettings()
 {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", SendScenePage());
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.send(200, F("text/html"), SendScenePage());
+    server.sendHeader("Connection", "close");
 }
+
 void handle_OnConnect()
 {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", SendHomepage());
+    server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    server.send(200, F("text/html"), SendHomepage());
+    server.sendHeader("Connection", "close");
 }
 
-void handleDynamicDeviceRegistration(){
+void handleDynamicDeviceRegistration()
+{
     register_dynamic_devices();
-    server.send(200, "text/html", "Registered Your Devices");
+    server.send(200, F("text/html"), F("Registered Your Devices"));
+    server.sendHeader("Connection", "close");
 }
 
-void handleDynamicSceneRegistration(){
+void handleDynamicSceneRegistration()
+{
     register_dynamic_scenes();
-    server.send(200, "text/html", "Registered Your Scenes");
+    server.send(200, F("text/html"), F("Registered Your Scenes"));
+    server.sendHeader("Connection", "close");
+}
+
+void handleDynamicGuiRegistration()
+{
+    register_dynamic_guis();
+    server.send(200, F("text/html"), F("Registered Your Guis"));
+    server.sendHeader("Connection", "close");
 }
 
 void handleEditJson()
@@ -249,274 +267,301 @@ void handleEditJson()
     {
         if (!server.hasArg("filename"))
         {
-            server.send(400, "text/html", "Missing filename");
+            server.send(400, F("text/html"), F("Missing filename"));
+            server.sendHeader("Connection", "close");
             return;
         }
         String filename = server.arg("filename");
-        // Check if the file exists. If not, initialize content as empty.
-        String fileContent = SPIFFS.exists(("/" + filename).c_str()) ? readFile(SPIFFS, ("/" + filename).c_str()) : "{}";
-        JsonDocument jsonData; // Adjust size as needed
+        String filePath = "/" + filename;
+        String fileContent = SPIFFS.exists(filePath.c_str()) ? readFile(SPIFFS, filePath.c_str()) : F("{}");
+        JsonDocument jsonData;
         deserializeJson(jsonData, fileContent);
-        fileContent.clear();
-        // Serialize JSON document for display
+        fileContent = "";
         String stringData;
-        serializeJsonPretty(jsonData, stringData); // Correctly serialize JSON to string
+        serializeJsonPretty(jsonData, stringData);
 
-        // Your existing code to construct HTML form...
-        String htmlForm = "<textarea name='jsonContent' rows='10' cols='50'>" + stringData + "</textarea>";
-        stringData.clear();
-        String htmlPage = "<!DOCTYPE html><html><body>";
+        // Build HTML form using += to append flash strings safely
+        String htmlForm = String(F("<textarea name='jsonContent' rows='10' cols='50'>"));
+        htmlForm += stringData;
+        htmlForm += F("</textarea>");
 
-        htmlPage +=       "<h2>Edit JSON File</h2>"
-                          "<form action='/editJson' method='post'>"
-                          "<input type='hidden' name='filename' value='" +
-                          filename + "'>" + htmlForm +
-                          "<input type='submit' name='action' value='Save'>"
-                          "<input type='submit' name='action' value='Delete' onclick=\"return confirm('Are you sure?');\">"
-                          "</form></body></html>";
-        server.sendHeader("Access-Control-Allow-Origin", "*");
-        server.send(200, "text/html; charset=UTF-8", htmlPage);
-        server.begin();
-        filename.clear();
-        htmlPage.clear();
-        htmlForm.clear();
-        jsonData.clear();
+        String htmlPage = String(F("<!DOCTYPE html><html><body>"));
+        htmlPage += F("<h2>Edit JSON File</h2>"
+                      "<form action='/editJson' method='post'>"
+                      "<input type='hidden' name='filename' value='");
+        htmlPage += filename;
+        htmlPage += F("'>");
+        htmlPage += htmlForm;
+        htmlPage += F("<input type='submit' name='action' value='Save'>"
+                      "<input type='submit' name='action' value='Delete' onclick=\"return confirm('Are you sure?');\">"
+                      "</form></body></html>");
+        server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+        server.send(200, F("text/html; charset=UTF-8"), htmlPage);
+        server.sendHeader("Connection", "close");
     }
     else if (server.method() == HTTP_POST)
     {
         if (!server.hasArg("filename") || !server.hasArg("action"))
         {
-            server.send(400, "text/html", "Missing data");
+            server.send(400, F("text/html"), F("Missing data"));
+            server.sendHeader("Connection", "close");
             return;
         }
         String filename = server.arg("filename");
         String action = server.arg("action");
 
-        if (action == "Save")
+        if (action.equals(F("Save")))
         {
             if (!server.hasArg("jsonContent"))
             {
-                server.send(400, "text/html", "Missing JSON content");
-                filename.clear();
-                action.clear();
+                server.send(400, F("text/html"), F("Missing JSON content"));
+                server.sendHeader("Connection", "close");
                 return;
             }
             String jsonContent = server.arg("jsonContent");
-
-            JsonDocument doc; // Adjust size as needed
+            JsonDocument doc;
             DeserializationError error = deserializeJson(doc, jsonContent);
-            jsonContent.clear();
+            jsonContent = "";
             if (error)
             {
-                // Respond with an error message if JSON parsing fails
-                server.send(400, "text/html", "Invalid JSON data");
-                doc.clear();
+                server.send(400, F("text/html"), F("Invalid JSON data"));
+                server.sendHeader("Connection", "close");
                 return;
             }
-
-            // Serialize the validated JSON document back to a string
             String updatedJson;
             serializeJson(doc, updatedJson);
-
-            writeFile(SPIFFS, ("/" + filename).c_str(), updatedJson.c_str()); // Save validated and updated JSON
-            updatedJson.clear();
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.send(200, "text/html", "<h2>File Updated</h2><a href='/listJson'>JSON List</a>");
-            server.begin();
+            String filePath = "/" + filename;
+            writeFile(SPIFFS, filePath.c_str(), updatedJson.c_str());
+            server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+            server.send(200, F("text/html"), F("<h2>File Updated</h2><a href='/listJson'>JSON List</a>"));
+            jsonContent.clear();
             doc.clear();
+            updatedJson.clear();
+            server.sendHeader("Connection", "close");
+            return;
         }
-        else if (action == "Delete")
+        else if (action.equals(F("Delete")))
         {
-            deleteFile(SPIFFS, ("/" + filename).c_str());
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.send(200, "text/html", "<h2>File Deleted</h2><a href='/listJson'>JSON List</a>");
+            String filePath = "/" + filename;
+            deleteFile(SPIFFS, filePath.c_str());
+            server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+            server.send(200, F("text/html"), F("<h2>File Deleted</h2><a href='/listJson'>JSON List</a>"));
+            server.sendHeader("Connection", "close");
+            return;
         }
     }
     else
     {
-        server.send(405, "text/html", "Method Not Allowed");
+        server.send(405, F("text/html"), F("Method Not Allowed"));
+        server.sendHeader("Connection", "close");
     }
 }
+
 void handleListJsonFiles()
 {
-    String html = "<!DOCTYPE html><html><head><title>JSON Files</title></head><body>";
-    html += "<h2>List of JSON Files</h2>";
-    html += "<ul>";
-
-    File root = SPIFFS.open("/");
-    File file = root.openNextFile();
-    while (file)
+    if (server.hasArg("configTool"))
     {
-        if (String(file.name()).endsWith(".json"))
+        String jsonPayload = F("{\"files\":[");
+        bool first = true;
+        File root = SPIFFS.open("/");
+        File file = root.openNextFile();
+        while (file)
         {
-            String fileName = String(file.name());
-            // Create a link to the edit page for each JSON file
-            html += "<li><a href='/editJson?filename=" + fileName + "'>" + fileName + "</a></li>";
+            String fname = file.name();
+            if (fname.endsWith(".json"))
+            {
+                if (!first)
+                {
+                    jsonPayload += F(",");
+                }
+                jsonPayload += F("{\"name\":\"");
+                jsonPayload += fname;
+                jsonPayload += F("\",\"size\":");
+                jsonPayload += String(file.size());
+                jsonPayload += F("}");
+                first = false;
+            }
+            file = root.openNextFile();
         }
-        file = root.openNextFile();
+        jsonPayload += F("]}");
+        server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+        server.send(200, F("application/json"), jsonPayload);
+        server.sendHeader("Connection", "close");
+        return;
     }
+    else
+    {
+        String html = String(F("<!DOCTYPE html><html><head><title>JSON Files</title></head><body>"));
+        html += F("<h2>List of JSON Files</h2>");
+        html += F("<ul>");
 
-    html += "</ul>";
-    html += "</body></html>";
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "text/html", html);
-    root.flush();
-    file.flush();
+        File root = SPIFFS.open("/");
+        File file = root.openNextFile();
+        while (file)
+        {
+            String fname = file.name();
+            if (fname.endsWith(".json"))
+            {
+                html += F("<li><a href='/editJson?filename=");
+                html += fname;
+                html += F("'>");
+                html += fname;
+                html += F("</a></li>");
+            }
+            file = root.openNextFile();
+        }
+
+        html += F("</ul>");
+        html += F("</body></html>");
+        server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+        server.send(200, F("text/html"), html);
+        server.sendHeader("Connection", "close");
+    }
 }
+
 void handle_NotFound()
 {
-    server.send(404, "text/plain", "Not found");
+    server.send(404, F("text/plain"), F("Not found"));
+    server.sendHeader("Connection", "close");
 }
 
-void handleGetJson(){
+void handleGetJson()
+{
     if (server.method() == HTTP_GET)
     {
         if (!server.hasArg("filename"))
         {
-            server.send(400, "text/html", "Missing filename");
+            server.send(400, F("text/html"), F("Missing filename"));
+            server.sendHeader("Connection", "close");
             return;
         }
         String filename = server.arg("filename");
-        // Check if the file exists. If not, initialize content as empty.
-        String fileContent = SPIFFS.exists(("/" + filename).c_str()) ? readFile(SPIFFS, ("/" + filename).c_str()) : "{}";
-        JsonDocument jsonData; // Adjust size as needed
+        String filePath = "/" + filename;
+        String fileContent = SPIFFS.exists(filePath.c_str()) ? readFile(SPIFFS, filePath.c_str()) : F("{}");
+        JsonDocument jsonData;
         deserializeJson(jsonData, fileContent);
-        fileContent.clear();
-        filename.clear();
-        // Serialize JSON document for display
+        fileContent = "";
         String stringData;
-        serializeJsonPretty(jsonData, stringData); // Correctly serialize JSON to string
-
-        server.sendHeader("Access-Control-Allow-Origin", "*");
-        server.send(200, "text/json; charset=UTF-8", stringData);
-        server.begin();
-        jsonData.clear();
+        serializeJsonPretty(jsonData, stringData);
+        server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+        server.send(200, F("text/json; charset=UTF-8"), stringData);
+        fileContent.clear();
         stringData.clear();
+        jsonData.clear();
+        server.sendHeader("Connection", "close");
+        return;
     }
     else
     {
-        server.send(405, "text/html", "Method Not Allowed");
+        server.send(405, F("text/html"), F("Method Not Allowed"));
+        server.sendHeader("Connection", "close");
     }
 }
 
-void handlePutJson(){
+void handlePutJson()
+{
     if (server.method() == HTTP_POST)
     {
         if (!server.hasArg("filename") || !server.hasArg("action"))
         {
-            server.send(400, "text/html", "Missing data");
+            server.send(400, F("text/html"), F("Missing data"));
+            server.sendHeader("Connection", "close");
             return;
         }
         String filename = server.arg("filename");
         String action = server.arg("action");
 
-        if (action == "Save")
+        if (action.equals(F("Save")))
         {
             if (!server.hasArg("jsonContent"))
             {
-                server.send(400, "text/html", "Missing JSON content");
-                filename.clear();
-                action.clear();
+                server.send(400, F("text/html"), F("Missing JSON content"));
+                server.sendHeader("Connection", "close");
                 return;
             }
             String jsonContent = server.arg("jsonContent");
-
-            JsonDocument doc; // Adjust size as needed
+            JsonDocument doc;
             DeserializationError error = deserializeJson(doc, jsonContent);
-            jsonContent.clear();
+            jsonContent = "";
             if (error)
             {
-                // Respond with an error message if JSON parsing fails
-                server.send(400, "text/html", "Invalid JSON data");
-                doc.clear();
-                filename.clear();
-                action.clear();
+                server.send(400, F("text/html"), F("Invalid JSON data"));
+                server.sendHeader("Connection", "close");
                 return;
             }
-
-            // Serialize the validated JSON document back to a string
             String updatedJson;
             serializeJson(doc, updatedJson);
-
-            writeFile(SPIFFS, ("/" + filename).c_str(), updatedJson.c_str()); // Save validated and updated JSON
-            updatedJson.clear();
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.send(200, "text/html", "File Updated");
-            server.begin();
+            String filePath = "/" + filename;
+            writeFile(SPIFFS, filePath.c_str(), updatedJson.c_str());
+            server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+            server.send(200, F("text/html"), F("File Updated"));
             doc.clear();
-            filename.clear();
-            action.clear();
+            updatedJson.clear();
+            server.sendHeader("Connection", "close");
+            return;
         }
-        else if (action == "Delete")
+        else if (action.equals(F("Delete")))
         {
-            deleteFile(SPIFFS, ("/" + filename).c_str());
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.send(200, "text/html", "File Deleted");
-            filename.clear();
+            String filePath = "/" + filename;
+            deleteFile(SPIFFS, filePath.c_str());
+            server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+            server.send(200, F("text/html"), F("File Deleted"));
+            server.sendHeader("Connection", "close");
+            return;
         }
     }
     else
     {
-        server.send(405, "text/html", "Method Not Allowed");
+        server.send(405, F("text/html"), F("Method Not Allowed"));
+        server.sendHeader("Connection", "close");
     }
 }
 
 String SendWifiPage()
 {
-    String ptr = siteHeader;
-    ptr += "<h3>Wifi Details and Config (Be Careful)</h3>\n";
-
-    ptr += "</body>\n";
-    ptr += "</html>\n";
+    // Assuming siteHeader is defined as a constant string
+    String ptr = String(siteHeader);
+    ptr += F("<h3>Wifi Details and Config (Be Careful)</h3>\n");
+    ptr += F("</body>\n</html>\n");
     return ptr;
 }
 
 String SendDevicePage()
 {
     JsonDocument readData;
-    Serial.println("Reading JSON from SPIFFS: ");
+    Serial.println(F("Reading JSON from SPIFFS: "));
     String json = readFile(SPIFFS, "/test.json");
     deleteFile(SPIFFS, "/test.json");
     deleteFile(SPIFFS, "/hello.txt");
 
     deserializeJson(readData, json);
-    String ptr = siteHeader;
-    ptr += "<h3>Device Details and Config</h3>\n";
-    ptr += "<p>";
+    String ptr = String(siteHeader);
+    ptr += F("<h3>Device Details and Config</h3>\n<p>");
     ptr += readData.as<String>();
-    ptr += "</p>\n";
-
-    ptr += "</body>\n";
-    ptr += "</html>\n";
-    readData.clear();
-    json.clear();
+    ptr += F("</p>\n</body>\n</html>\n");
     return ptr;
 }
 
 String SendScenePage()
 {
-    String ptr = siteHeader;
-    ptr += "<h3>Scene Details and Config</h3>\n";
-
-    ptr += "</body>\n";
-    ptr += "</html>\n";
+    String ptr = String(siteHeader);
+    ptr += F("<h3>Scene Details and Config</h3>\n");
+    ptr += F("</body>\n</html>\n");
     return ptr;
 }
 
 String SendHomepage()
 {
-    String ptr = siteHeader;
-    ptr += "<h3>Welcome to OMOTE Config</h3>\n";
-    ptr += "</body>\n";
-    ptr += "</html>\n";
+    String ptr = String(siteHeader);
+    ptr += F("<h3>Welcome to OMOTE Config</h3>\n");
+    ptr += F("</body>\n</html>\n");
     return ptr;
 }
 
 String SendFinishSetupPage()
 {
-    String ptr = siteHeader;
-    ptr += "<h3>Successfully Finished Setup. If you'd like to return to setup, please throw the toggle on your remote.</h3>\n";
-    ptr += "</body>\n";
-    ptr += "</html>\n";
+    String ptr = String(siteHeader);
+    ptr += F("<h3>Successfully Finished Setup. If you'd like to return to setup, please throw the toggle on your remote.</h3>\n");
+    ptr += F("</body>\n</html>\n");
     return ptr;
 }

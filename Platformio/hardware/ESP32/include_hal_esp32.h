@@ -14,3 +14,6 @@
 #include "ESP32/tft_hal_esp32.h"
 #include "ESP32/user_led_hal_esp32.h"
 #include "ESP32/webserver_hal_esp32.h"
+#include "ESP32/dynamicConfig/devices_dynamic.h"
+#include "ESP32/dynamicConfig/scenes_dynamic.h"
+#include "ESP32/dynamicConfig/guis_dynamic.h"

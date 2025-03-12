@@ -13,17 +13,6 @@
 #include "applicationInternal/scenes/sceneRegistry.h"   // Provides definitions for KEY_UP, KEY_VOLUP, etc.
 #include "applicationInternal/commandHandler.h"         // Provides register_command() and makeCommandData()
 
-// --- Constants ---
-#define MAX_NAME_LEN 32
-#define MAX_COMMANDS 200
-
-// --- External Variables & Functions ---
-// These are assumed to be defined elsewhere in your project.
-struct CommandEntry; // Forward declaration (actual definition should be provided elsewhere)
-extern uint16_t nextCommandValue;
-extern CommandEntry commandTable[MAX_COMMANDS];
-extern uint8_t hashIndex(const char* str);
-
 // --- Function Prototypes ---
 
 /**
@@ -33,6 +22,9 @@ extern uint8_t hashIndex(const char* str);
  * @return A String containing the file content.
  */
 String readFileContent(const char* path);
+
+
+uint16_t getBLECommandValue(const std::string& commandName);
 
 /**
  * @brief Maps a button name (from the scene JSON) to its corresponding key code.

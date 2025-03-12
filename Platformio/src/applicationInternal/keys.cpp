@@ -67,22 +67,46 @@ void keypad_loop(void) {
       setLastActivityTimestamp(); // Reset the sleep timer when a button is pressed
     }
     char keyChar = keypad_keys[i].kchar;
-    int keyCode = keypad_keys[i].kcode;
+    int keyCode = keypad_keys[i].kcode; // This should be the normalized key index!
+    int row = keyCode / ROWS;
+    int col = keyCode % COLS;
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
+        if(col != -1){
+          Serial.printf("Invalid keyCode %d: row %d, col %d\n", keyCode, row, col);
+        }
+        continue; // Skip processing this key press to prevent out-of-bound access.
+    }
 
     if (keypad_keys[i].kstate == PRESSED) {
       omote_log_v("pressed\r\n");
-      
-      if ((get_key_repeatMode(gui_memoryOptimizer_getActiveSceneName(), keyChar) == SHORT) && (lastKeyState[keyCode/ROWS][keyCode%ROWS] != PRESSED)) {
-        omote_log_v("key: PRESSED of SHORT key %c (%d)\r\n", keyChar, keyCode);
-        doShortPress(keyChar, keyCode);
-      
-      } else if ((get_key_repeatMode(gui_memoryOptimizer_getActiveSceneName(), keyChar) == SHORT_REPEATED) && (lastKeyState[keyCode/ROWS][keyCode%ROWS] != PRESSED)) { // here do not repeat it too early, do the repeat only in HOLD
-        omote_log_v("key: PRESSED of SHORT_REPEATED key %c (%d)\r\n", keyChar, keyCode);
-        doShortPress(keyChar, keyCode);
-
+      try {
+        std::string activeSceneName = gui_memoryOptimizer_getActiveSceneName();
+        if (activeSceneName.empty()) {
+          Serial.println("Active scene name is empty!");
+          continue;  // Prevent further access
+        }
+    
+        // Check that keyCode is within the valid range
+        const int totalKeys = ROWS * COLS;
+        if (keyCode < 0 || keyCode >= totalKeys) {
+          Serial.printf("Invalid keyCode: %d for key '%c'\n", keyCode, keyChar);
+          continue;
+        }
+        
+        auto repeatMode = get_key_repeatMode(activeSceneName, keyChar);
+        if ((repeatMode == SHORT) && (lastKeyState[keyCode/ROWS][keyCode%ROWS] != PRESSED)) {
+          omote_log_v("key: PRESSED of SHORT key %c (%d)\r\n", keyChar, keyCode);
+          doShortPress(keyChar, keyCode);
+        } else if ((repeatMode == SHORT_REPEATED) && (lastKeyState[keyCode/ROWS][keyCode%ROWS] != PRESSED)) {
+          omote_log_v("key: PRESSED of SHORT_REPEATED key %c (%d)\r\n", keyChar, keyCode);
+          doShortPress(keyChar, keyCode);
+        }
+        
+        // Mark the key as PRESSED in our state array
+        lastKeyState[keyCode/ROWS][keyCode%ROWS] = PRESSED;
+      } catch(const std::out_of_range& oor) {
+        omote_log_e("Error when trying to get key repeat mode potentially.\r\n");
       }
-      lastKeyState[keyCode/ROWS][keyCode%ROWS] = PRESSED;
-
     } else if (keypad_keys[i].kstate == HOLD) {
       omote_log_v("hold\r\n");
       

@@ -13,7 +13,7 @@
 #define FORMAT_SPIFFS_IF_FAILED true
 
 // ----- Fixed Memory Block Setup -----
-#define MAX_COMMANDS 200   // Limit to 300 commands
+#define MAX_COMMANDS 200   // Limit to 500 commands
 #define MAX_NAME_LEN 32    // Maximum length for a command name
 
 struct CommandEntry {
@@ -26,7 +26,6 @@ struct CommandEntry {
 CommandEntry commandTable[MAX_COMMANDS];
 // Global counter for assigning a unique value to each command
 uint16_t nextCommandValue = 0;
-
 // ----- Hash Function & Registration -----
 // Simple DJB2 hash to compute an index from the command name.
 uint8_t hashIndex(const char* str) {
@@ -52,18 +51,23 @@ void register_command_dynamic(const char* name, const char* commandType, const c
     }
   }
 
-  // Save the command information into the table.
+  // Save the command name into the table.
   strncpy(commandTable[index].name, name, MAX_NAME_LEN);
   commandTable[index].name[MAX_NAME_LEN - 1] = '\0'; // Ensure null termination
-  commandTable[index].value = nextCommandValue++;  // Assign a unique value
-  commandTable[index].inUse = true;
-  if(commandType == "MQTT"){
-    register_command(&nextCommandValue, makeCommandData(MQTT, {commandData, commandDataExtended}));
-  } else if(commandType == "IR"){
-    register_command(&nextCommandValue, makeCommandData(IR, {commandData, commandDataExtended}));
-  } else if(commandType == "BLE"){
-    register_command(&nextCommandValue, makeCommandData(BLE_KEYBOARD, {commandData, commandDataExtended}));
+
+  // Use a local variable for the command ID.
+  uint16_t cmdId = 0;
+  if(strcmp(commandType, "MQTT") == 0){
+    register_command(&cmdId, makeCommandData(MQTT, {commandData, commandDataExtended}));
+  } else if(strcmp(commandType, "IR") == 0){
+    register_command(&cmdId, makeCommandData(IR, {commandData, commandDataExtended}));
+  } else if(strcmp(commandType, "BLE") == 0){
+    register_command(&cmdId, makeCommandData(BLE_KEYBOARD, {commandData, commandDataExtended}));
   }
+ 
+  commandTable[index].value = cmdId;
+  commandTable[index].inUse = true;
+ 
   // Debug output (you might remove these prints in a production build)
   Serial.print("Registered command: ");
   Serial.print(name);
@@ -158,6 +162,7 @@ void register_dynamic_devices() {
     return;
   }
   clearCommands();
+  nextCommandValue = getComID();
   String devicesFileContent = SPIFFS.exists("/devices.json") ? readFileDevices(SPIFFS, "/devices.json") : "[]";
 
   JsonDocument devices;
@@ -183,6 +188,7 @@ void register_dynamic_devices() {
     Serial.println(deviceName);
     register_dynamic_device(deviceName);
   }
+  register_keyboardCommands();
 }
 
 // ----- Example: Lookup for a Command -----
