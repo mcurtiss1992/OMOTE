@@ -39,7 +39,7 @@ void loop(){
     char key = keypad.getKey();
 
     if (key) {
-        Serial.println(key);
+        omote_log_i(key);
     }
     if (blink){
         digitalWrite(ledPin,!digitalRead(ledPin));    // Change the ledPin from Hi2Lo or Lo2Hi.

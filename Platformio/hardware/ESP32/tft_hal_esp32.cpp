@@ -2,6 +2,8 @@
 #include "driver/ledc.h"
 #include "tft_hal_esp32.h"
 #include "sleep_hal_esp32.h"
+#include "applicationInternal/omote_log.h"
+
 
 uint8_t SDA_GPIO = 19;
 uint8_t SCL_GPIO = 22;
@@ -86,20 +88,20 @@ void init_tft(void) {
   ledc_timer.clk_cfg = LEDC_USE_APB_CLK;
   esp_err_t err = ledc_timer_config(&ledc_timer);
   if (err != ESP_OK) {
-    Serial.println("Error when calling ledc_timer_config!");
+    omote_log_i("Error when calling ledc_timer_config!");
   }  
 
   #if (OMOTE_HARDWARE_REV == 1)
   // Slowly charge the VSW voltage to prevent a brownout
   // Workaround for hardware rev 1!
-  Serial.println("Will slowly charge VSW voltage to prevent that screen is completely bright, with no content");
+  omote_log_i("Will slowly charge VSW voltage to prevent that screen is completely bright, with no content");
   for(int i = 0; i < 100; i++) {
     digitalWrite(LCD_EN_GPIO, HIGH);  // LCD Logic off
     delayMicroseconds(1);
     digitalWrite(LCD_EN_GPIO, LOW);   // LCD Logic on
   }
   #else
-  Serial.println("Will immediately charge VSW voltage. If screen is completely bright, with no content, then this is the reason.");
+  omote_log_i("Will immediately charge VSW voltage. If screen is completely bright, with no content, then this is the reason.");
   digitalWrite(LCD_EN_GPIO, LOW);
   #endif
 

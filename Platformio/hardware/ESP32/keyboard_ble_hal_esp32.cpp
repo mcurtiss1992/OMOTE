@@ -6,6 +6,8 @@
 #include "lib/ESP32-BLE-Keyboard/BleKeyboard.h"
 #include "battery_hal_esp32.h"
 #include "keyboard_ble_hal_esp32.h"
+#include "applicationInternal/omote_log.h"
+
 
 BleKeyboard bleKeyboard("OMOTE Keyboard", "CoretechR");
 
@@ -75,15 +77,15 @@ void delete_bonds_if_NimBLE_version_changed() {
   // startup: init flash
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    Serial.printf("nvs_flash_init() failed with error=%d, will erase flash\r\n", err);
+    omote_log_e("nvs_flash_init() failed with error=%d, will erase flash\r\n", err);
     err = nvs_flash_erase();
     if (err != ESP_OK) {
-      Serial.printf("nvs_flash_erase() failed with error=%d; will return\r\n", err);
+      omote_log_e("nvs_flash_erase() failed with error=%d; will return\r\n", err);
       return;
     }
     err = nvs_flash_init();
     if (err != ESP_OK) {
-      Serial.printf("nvs_flash_init() failed with error=%d, even after flash was erased; will return\r\n", err);
+      omote_log_e("nvs_flash_init() failed with error=%d, even after flash was erased; will return\r\n", err);
       return;
     }
   }
@@ -92,7 +94,7 @@ void delete_bonds_if_NimBLE_version_changed() {
   nvs_handle_t nimble_bond_handle;
   err = nvs_open("nimble_bond", NVS_READWRITE, &nimble_bond_handle);
   if (err != ESP_OK) {
-    Serial.printf("nvs_open 'nimble_bond' failed with error=%d, will return\r\n", err);
+    omote_log_e("nvs_open 'nimble_bond' failed with error=%d, will return\r\n", err);
     return;
   }
 
@@ -111,7 +113,7 @@ void delete_bonds_if_NimBLE_version_changed() {
   // and just for information, what an Identity Address is:
   // Identity Address: An address associated with an RPA that does not change over time. An IRK is required to resolve an RPA to its Identity Address.
  
-  // Serial.printf("'peer_sec_1' present: %s; 'rpa_rec_1' present: %s; 'local_irk_1' present: %s\r\n", bond_exists ? "yes" : "no", rpa_exists ? "yes" : "no", irk_exists ? "yes" : "no");
+  // omote_log_e("'peer_sec_1' present: %s; 'rpa_rec_1' present: %s; 'local_irk_1' present: %s\r\n", bond_exists ? "yes" : "no", rpa_exists ? "yes" : "no", irk_exists ? "yes" : "no");
   /*
                                               peer_sec_1 rpa_rec_1  local_irk_1     partition 'nimble_bond' should be deleted
   1.4.x, no bonds                             NO         NO         NO
@@ -128,13 +130,13 @@ void delete_bonds_if_NimBLE_version_changed() {
   // We are in NimBLE 1.4.x. Check if we downgraded from NimBLE 2.0.x
   bool erase_nimble_partition = (rpa_exists || irk_exists);
   if (erase_nimble_partition) {
-    Serial.printf("We are using NimBLE 1.4.x, but bonds from NimBLE 2.0.x are present. We have to delete all bonds, otherwise ESP32 will crash! Please bond your peers again.\r\n");
+    omote_log_e("We are using NimBLE 1.4.x, but bonds from NimBLE 2.0.x are present. We have to delete all bonds, otherwise ESP32 will crash! Please bond your peers again.\r\n");
   }
   #else
   // We are in NimBLE 2.0.x. Check if we upgraded from NimBLE 1.4.x
   bool erase_nimble_partition = bond_exists && !(rpa_exists);
   if (erase_nimble_partition) {
-    Serial.printf("We are using NimBLE 2.0.x, but bonds from NimBLE 1.4.x are present. We have to delete all bonds, otherwise they will not work! Please bond your peers again.\r\n");
+    omote_log_e("We are using NimBLE 2.0.x, but bonds from NimBLE 1.4.x are present. We have to delete all bonds, otherwise they will not work! Please bond your peers again.\r\n");
   }
   #endif
 
@@ -143,7 +145,7 @@ void delete_bonds_if_NimBLE_version_changed() {
     nvs_commit(nimble_bond_handle);
     nvs_close(nimble_bond_handle);
     // ESP needs to be restarted, because NVS data is still in nimble RAM
-    Serial.printf("  NVS partition 'nimble_bond' was erased. Now we have to restart the ESP32 to also clear nimble RAM.\r\n");
+    omote_log_e("  NVS partition 'nimble_bond' was erased. Now we have to restart the ESP32 to also clear nimble RAM.\r\n");
     ESP.restart();
   } else {
     nvs_close(nimble_bond_handle);

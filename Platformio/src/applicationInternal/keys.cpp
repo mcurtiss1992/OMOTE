@@ -72,7 +72,7 @@ void keypad_loop(void) {
     int col = keyCode % COLS;
     if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
         if(col != -1){
-          Serial.printf("Invalid keyCode %d: row %d, col %d\n", keyCode, row, col);
+          omote_log_e("Invalid keyCode %d: row %d, col %d\n", keyCode, row, col);
         }
         continue; // Skip processing this key press to prevent out-of-bound access.
     }
@@ -82,14 +82,14 @@ void keypad_loop(void) {
       try {
         std::string activeSceneName = gui_memoryOptimizer_getActiveSceneName();
         if (activeSceneName.empty()) {
-          Serial.println("Active scene name is empty!");
+          omote_log_e("Active scene name is empty!");
           continue;  // Prevent further access
         }
     
         // Check that keyCode is within the valid range
         const int totalKeys = ROWS * COLS;
         if (keyCode < 0 || keyCode >= totalKeys) {
-          Serial.printf("Invalid keyCode: %d for key '%c'\n", keyCode, keyChar);
+          omote_log_e("Invalid keyCode: %d for key '%c'\n", keyCode, keyChar);
           continue;
         }
         

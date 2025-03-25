@@ -8,12 +8,14 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 #include "applicationInternal/commandHandler.h"
-#include <cstring> // For memset
+#include <cstring>     // For memset
+#include <string>      // For std::string
+#include "applicationInternal/omote_log.h"
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
 // ----- Fixed Memory Block Setup -----
-#define MAX_COMMANDS 200   // Limit to 500 commands
+#define MAX_COMMANDS 200   // Limit to 200 commands
 #define MAX_NAME_LEN 32    // Maximum length for a command name
 
 struct CommandEntry {
@@ -26,6 +28,7 @@ struct CommandEntry {
 CommandEntry commandTable[MAX_COMMANDS];
 // Global counter for assigning a unique value to each command
 uint16_t nextCommandValue = 0;
+
 // ----- Hash Function & Registration -----
 // Simple DJB2 hash to compute an index from the command name.
 uint8_t hashIndex(const char* str) {
@@ -46,7 +49,7 @@ void register_command_dynamic(const char* name, const char* commandType, const c
   while (commandTable[index].inUse && strcmp(commandTable[index].name, name) != 0) {
     index = (index + 1) % MAX_COMMANDS;
     if (index == originalIndex) {
-      Serial.println("Error: Command table full!");
+      omote_log_e("Error: Command table full!");
       return;
     }
   }
@@ -57,42 +60,42 @@ void register_command_dynamic(const char* name, const char* commandType, const c
 
   // Use a local variable for the command ID.
   uint16_t cmdId = 0;
-  if(strcmp(commandType, "MQTT") == 0){
+  if (strcmp(commandType, "MQTT") == 0) {
     register_command(&cmdId, makeCommandData(MQTT, {commandData, commandDataExtended}));
-  } else if(strcmp(commandType, "IR") == 0){
-    register_command(&cmdId, makeCommandData(IR, {commandData, commandDataExtended}));
-  } else if(strcmp(commandType, "BLE") == 0){
+  } else if (strcmp(commandType, "IR") == 0) {
+    int irProtocol = std::atoi(commandData);
+    register_command(&cmdId, makeCommandData(IR, {irProtocol, commandDataExtended}));
+  } else if (strcmp(commandType, "BLE") == 0) {
     register_command(&cmdId, makeCommandData(BLE_KEYBOARD, {commandData, commandDataExtended}));
   }
- 
+
   commandTable[index].value = cmdId;
   commandTable[index].inUse = true;
- 
-  // Debug output (you might remove these prints in a production build)
-  Serial.print("Registered command: ");
-  Serial.print(name);
-  Serial.print(" at index ");
-  Serial.print(index);
-  Serial.print(" with value ");
-  Serial.println(commandTable[index].value);
+
+  // Debug output
+  omote_log_i("Registered command: %s at index %d with value %d", name, index, commandTable[index].value);
 }
 
 // ----- File Reading Helper -----
+// Reads file content from SPIFFS.
 String readFileDevices(fs::FS &fs, const char *path) {
   String outContent = "";
-  Serial.printf("Reading file: %s\r\n", path);
+  omote_log_i("Reading file: %s", path);
+  
   File file = fs.open(path);
   if (!file || file.isDirectory()) {
-    Serial.println("- failed to open file for reading");
+    omote_log_e("- failed to open file for reading");
     return "- failed to open file for reading";
   }
+  
   size_t fileSize = file.size();
   std::unique_ptr<char[]> buf(new char[fileSize + 1]);
   file.readBytes(buf.get(), fileSize);
   buf[fileSize] = '\0'; // Null-terminate
   outContent = String(buf.get());
   file.close();
-  Serial.println(outContent);
+  
+  omote_log_i("%s", outContent.c_str());
   return outContent;
 }
 
@@ -101,117 +104,120 @@ String readFileDevices(fs::FS &fs, const char *path) {
 boolean register_dynamic_device(const char *deviceName) {
   String deviceFilePath = String("/device_") + deviceName + ".json";
   String deviceFileContent;
+  
   if (SPIFFS.exists(deviceFilePath.c_str())) {
     deviceFileContent = readFileDevices(SPIFFS, deviceFilePath.c_str());
   } else {
     deviceFileContent = "[]"; // Default to an empty JSON array if not found
   }
 
-  // Use a fixed-size JSON document to minimize dynamic memory allocation.
+  // Create a JsonDocument with an appropriate capacity.
   JsonDocument device;
   DeserializationError error = deserializeJson(device, deviceFileContent);
   deviceFileContent.clear();
 
   if (error) {
-    Serial.print("Failed to parse JSON: ");
-    Serial.println(error.f_str());
+    omote_log_e("Failed to parse JSON:");
+    omote_log_e("%s", error.f_str());
     return false;
   }
 
   JsonArray commandArray = device.as<JsonArray>();
   if (!commandArray) {
-    Serial.println("JSON is not an array!");
+    omote_log_e("JSON is not an array!");
     return false;
   }
 
   // Iterate over each command object in the JSON array.
   for (JsonObject command : commandArray) {
     std::string strname = deviceName;
-    std::string com = command["name"];
+    std::string com = command["name"].as<const char*>();
     std::string finalName = strname + "_" + com;
     const char* name = finalName.c_str();
     const char* commandType = command["commandType"];
     const char* commandData = command["commandData"];
     const char* commandDataExtended = command["commandDataExtended"];
 
-    Serial.print("Registering command: ");
-    Serial.println(name ? name : "N/A");
+    omote_log_i("Registering command: %s", name ? name : "N/A");
     if (name && commandType && commandData && commandDataExtended) {
       register_command_dynamic(name, commandType, commandData, commandDataExtended);
     }
   }
-
+  commandArray.clear();
+  device.clear();
   return true;
 }
 
-void clearCommands(){
-    // Clear out the commandTable to prepare for clean data
-    for (int i = 0; i < MAX_COMMANDS; ++i) {
-        std::memset(commandTable[i].name, 0, MAX_NAME_LEN);  // Clear the name
-        commandTable[i].value = 0;                           // Reset the value
-        commandTable[i].inUse = false;                       // Set inUse to false
-    }
+void clearCommands() {
+  // Clear out the commandTable to prepare for clean data.
+  for (int i = 0; i < MAX_COMMANDS; ++i) {
+    std::memset(commandTable[i].name, 0, MAX_NAME_LEN);  // Clear the name
+    commandTable[i].value = 0;                           // Reset the value
+    commandTable[i].inUse = false;                       // Mark as not in use
+  }
 }
 
 // Reads a master devices file and registers each dynamic device.
 void register_dynamic_devices() {
   Serial.begin(115200);
   delay(100);
+  
   if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
-    Serial.println("SPIFFS Mount Failed");
+    omote_log_e("SPIFFS Mount Failed");
     return;
   }
+  
   clearCommands();
   nextCommandValue = getComID();
+  
   String devicesFileContent = SPIFFS.exists("/devices.json") ? readFileDevices(SPIFFS, "/devices.json") : "[]";
 
+  // Create a JsonDocument with an appropriate capacity.
   JsonDocument devices;
   DeserializationError error = deserializeJson(devices, devicesFileContent);
   devicesFileContent.clear();
 
   if (error) {
     Serial.print("Failed to parse JSON: ");
-    Serial.println(error.f_str());
+    omote_log_e("%s", error.f_str());
     return;
   }
 
   JsonArray deviceArray = devices.as<JsonArray>();
   if (!deviceArray) {
-    Serial.println("devices.json is not an array!");
+    omote_log_e("devices.json is not an array!");
     return;
   }
 
   // For each device name in devices.json, register its commands.
   for (JsonVariant value : deviceArray) {
     const char* deviceName = value.as<const char*>();
-    Serial.print("Registering device: ");
-    Serial.println(deviceName);
+    omote_log_i("Registering device: %s", deviceName);
     register_dynamic_device(deviceName);
   }
+  
   register_keyboardCommands();
+  deviceArray.clear();
 }
 
 // ----- Example: Lookup for a Command -----
-// This demonstrates how you can later calculate the memory location using the same hash.
+// Demonstrates how to locate a command using the same hash.
 void lookup_command(const char* lookupName) {
   uint8_t index = hashIndex(lookupName);
   uint8_t originalIndex = index;
   bool found = false;
+  
   while (commandTable[index].inUse) {
     if (strcmp(commandTable[index].name, lookupName) == 0) {
-      Serial.print("Lookup for ");
-      Serial.print(lookupName);
-      Serial.print(" found value: ");
-      Serial.println(commandTable[index].value);
+      omote_log_i("Lookup for %s found value: %d", lookupName, commandTable[index].value);
       found = true;
       break;
     }
     index = (index + 1) % MAX_COMMANDS;
     if (index == originalIndex) break; // Searched entire table
   }
+  
   if (!found) {
-    Serial.print("Command ");
-    Serial.print(lookupName);
-    Serial.println(" not found.");
+    omote_log_i("Command %s not found.", lookupName);
   }
 }

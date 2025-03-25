@@ -30,6 +30,6 @@ void loop(){
   char key = keypad.getKey();
   
   if (key){
-    Serial.println(key);
+    omote_log_i(key);
   }
 }

@@ -36,11 +36,11 @@ void loop(){
 	if ((millis() - timer_ms) > 1000) {
 		Serial.print("Your loop code ran ");
 		Serial.print(loopCount);
-		Serial.println(" times over the last second");
+		omote_log_i(" times over the last second");
 		loopCount = 0;
 		timer_ms = millis();
 	}
 	loopCount++;
 	if(key)
-		Serial.println(key);
+		omote_log_i(key);
 }

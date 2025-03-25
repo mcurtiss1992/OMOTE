@@ -14,6 +14,8 @@
 #include "keyboard_ble_hal_esp32.h"
 // prepare keypad keys to wakeup
 #include "keypad_keys_hal_esp32.h"
+#include "applicationInternal/omote_log.h"
+
 
 uint8_t ACC_INT_GPIO = 13;
 
@@ -228,7 +230,7 @@ void init_IMU_HAL(void) {
 void check_activity_HAL() {
   activityDetection();
   if(millis() - lastActivityTimestamp > sleepTimeout){
-    Serial.println("Entering Sleep Mode. Goodbye.");
+    omote_log_i("Entering Sleep Mode. Goodbye.");
     enterSleep();
   }
 }

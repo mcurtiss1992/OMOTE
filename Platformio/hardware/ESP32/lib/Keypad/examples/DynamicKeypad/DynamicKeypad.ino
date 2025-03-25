@@ -41,7 +41,7 @@
 || |
 || |  Making more than one thing happen with the same key.
 || |    If you look under the PRESSED event (case PRESSED:) you will see that the '#'
-|| |    is used to print a new line, Serial.println().  But take a look at the first
+|| |    is used to print a new line, omote_log_i().  But take a look at the first
 || |    half of the HOLD event and you will see the same key being used to switch back
 || |    and forth between the letter and number keymaps that were created with alphaKeys[4][5]
 || |    and numberKeys[4][5] respectively.
@@ -184,7 +184,7 @@ void swOnState( char key ) {
                 if (isdigit(key) || key == ' ' || key == '.')
                     Serial.print(key);
                 if (key == '#')
-                    Serial.println();
+                    omote_log_i();
                 break;
 
         case HOLD:
@@ -200,8 +200,8 @@ void swOnState( char key ) {
             else  {                          // Some key other than '#' was pressed.
                 buildStr[buildCount++] = (isalpha(key)) ? virtKey : key;
                 buildStr[buildCount] = '\0';
-                Serial.println();
-                Serial.println(buildStr);
+                omote_log_i();
+                omote_log_i(buildStr);
             }
             break;
 

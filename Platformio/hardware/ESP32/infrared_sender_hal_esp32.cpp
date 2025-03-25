@@ -4,6 +4,8 @@
 #include <sstream>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
+#include "applicationInternal/omote_log.h"
+
 
 uint8_t IR_LED_GPIO = 33; // IR LED output
 
@@ -25,7 +27,8 @@ enum IRprotocols {
   IR_PROTOCOL_SONY = 3,
   IR_PROTOCOL_RC5 = 4,
   IR_PROTOCOL_DENON = 5,
-  IR_PROTOCOL_SAMSUNG36 = 6
+  IR_PROTOCOL_SAMSUNG36 = 6,
+  IR_PROTOCOL_EPSON = 7
 };
 void sendIRcode_HAL(int protocol, std::list<std::string> commandPayloads, std::string additionalPayload) {
 
@@ -34,7 +37,7 @@ void sendIRcode_HAL(int protocol, std::list<std::string> commandPayloads, std::s
   std::string dataStr;
   uint64_t data;
   if (commandPayloads.empty() && (additionalPayload == "")) {
-    Serial.printf("execute: cannot send IR command, because both data and payload are empty\r\n");
+    omote_log_e("execute: cannot send IR command, because both data and payload are empty\r\n");
     return;
   } else {
     if (additionalPayload != "") {
@@ -59,11 +62,11 @@ void sendIRcode_HAL(int protocol, std::list<std::string> commandPayloads, std::s
         std::getline(ss, valueStr, ',');
         // https://cplusplus.com/reference/string/stoull/
         data = std::stoull(valueStr, &sz, 0);
-        // Serial.printf("  next string value %s (%" PRIu64 ")\r\n", valueStr.c_str(), data);
+        // omote_log_e("  next string value %s (%" PRIu64 ")\r\n", valueStr.c_str(), data);
         buf[pos] = data;
         pos += 1;
       }
-      Serial.printf("execute: will send IR GC, array size %d\r\n", size);
+      omote_log_i("execute: will send IR GC, array size %d\r\n", size);
       IrSender.sendGC(buf, size);
       delete [] buf;
       break;
@@ -71,43 +74,49 @@ void sendIRcode_HAL(int protocol, std::list<std::string> commandPayloads, std::s
 
     case IR_PROTOCOL_NEC: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR NEC, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR NEC, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendNEC(data);
       break;
     }
 
     case IR_PROTOCOL_SAMSUNG: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR SAMSUNG, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR SAMSUNG, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendSAMSUNG(data);
       break;
     }
 
     case IR_PROTOCOL_SONY: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR SONY 15 bit, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR SONY 15 bit, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendSony(data, 15);
       break;
     }
 
     case IR_PROTOCOL_RC5: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR RC5, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR RC5, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendRC5(IrSender.encodeRC5X(0x00, data));
       break;
     }
 
     case IR_PROTOCOL_DENON: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR DENON 48 bit, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR DENON 48 bit, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendDenon(data, 48);
       break;
     }
 
     case IR_PROTOCOL_SAMSUNG36: {
       data = std::stoull(dataStr, &sz, 0);
-      Serial.printf("execute: will send IR SAMSUNG36, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      omote_log_i("execute: will send IR SAMSUNG36, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
       IrSender.sendSamsung36(data);
+      break;
+    }
+    case IR_PROTOCOL_EPSON: {
+      data = std::stoull(dataStr, &sz, 0);
+      omote_log_i("execute: will send IR EPSON, data %s (%" PRIu64 ")\r\n", dataStr.c_str(), data);
+      IrSender.sendEpson(data);
       break;
     }
   }

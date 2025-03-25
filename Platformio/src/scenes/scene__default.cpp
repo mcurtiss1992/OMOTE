@@ -3,16 +3,16 @@
 #include "applicationInternal/scenes/sceneRegistry.h"
 #include "applicationInternal/commandHandler.h"
 // devices
-#include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
-#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
-#include "devices/misc/device_smarthome/gui_smarthome.h"
+//#include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
+//#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
+//#include "devices/misc/device_smarthome/gui_smarthome.h"
 // scenes
 #include "scene__default.h"
 #include "scenes/scene_allOff.h"
-#include "scenes/scene_TV.h"
-#include "scenes/scene_fireTV.h"
-#include "scenes/scene_chromecast.h"
-#include "scenes/scene_appleTV.h"
+//#include "scenes/scene_TV.h"
+//#include "scenes/scene_fireTV.h"
+//#include "scenes/scene_chromecast.h"
+//#include "scenes/scene_appleTV.h"
 
 uint16_t SCENE_SELECTION;
 std::string scene_name_selection = "sceneSelection";
@@ -49,15 +49,15 @@ void register_scene_defaultKeys(void) {
   
   key_commands_short_default = {
                                                                                                              {KEY_OFF,   SCENE_ALLOFF_FORCE},
-    {KEY_STOP,  GUI_SMARTHOME_ACTIVATE},/*{KEY_REWI,  COMMAND_UNKNOWN  }, {KEY_PLAY,  COMMAND_UNKNOWN  },    {KEY_FORW,  COMMAND_UNKNOWN  },*/
+    /*{KEY_STOP,  GUI_SMARTHOME_ACTIVATE},/*{KEY_REWI,  COMMAND_UNKNOWN  }, {KEY_PLAY,  COMMAND_UNKNOWN  },    {KEY_FORW,  COMMAND_UNKNOWN  },*/
   /*{KEY_CONF,  COMMAND_UNKNOWN  },                                                                          {KEY_INFO,  COMMAND_UNKNOWN  },*/
                                                      /*  {KEY_UP,    COMMAND_UNKNOWN  },*/
                       {KEY_LEFT,  GUI_PREV  },       /*  {KEY_OK,    COMMAND_UNKNOWN  },*/  {KEY_RIGHT, GUI_NEXT  },
                                                      /*  {KEY_DOWN,  COMMAND_UNKNOWN  },*/
     {KEY_BACK,  SCENE_SELECTION  },                                                                        /*{KEY_SRC,   COMMAND_UNKNOWN  },*/
-    {KEY_VOLUP, DENONAVR_MQTT_VOL_UP  },                      {KEY_MUTE,  DENONAVR_MQTT_MUTE},                  /*{KEY_CHUP,  COMMAND_UNKNOWN  },*/
-    {KEY_VOLDO, DENONAVR_MQTT_VOL_DOWN },                      {KEY_REC,   SCENE_BACK_TO_PREVIOUS_GUI_LIST  },   /*{KEY_CHDOW, COMMAND_UNKNOWN  },*/
-    {KEY_RED,   SCENE_TV_FORCE   },    {KEY_GREEN, SCENE_FIRETV_FORCE},  {KEY_YELLO, SCENE_CHROMECAST_FORCE},{KEY_BLUE,  SCENE_APPLETV_FORCE},
+    /*{KEY_VOLUP, DENONAVR_MQTT_VOL_UP  },*/                      /*{KEY_MUTE,  DENONAVR_MQTT_MUTE},                  /*{KEY_CHUP,  COMMAND_UNKNOWN  },*/
+    /*{KEY_VOLDO, DENONAVR_MQTT_VOL_DOWN },*/                      {KEY_REC,   SCENE_BACK_TO_PREVIOUS_GUI_LIST  },   /*{KEY_CHDOW, COMMAND_UNKNOWN  },*/
+    /*{KEY_RED,   SCENE_TV_FORCE   },    {KEY_GREEN, SCENE_FIRETV_FORCE},  {KEY_YELLO, SCENE_CHROMECAST_FORCE},{KEY_BLUE,  SCENE_APPLETV_FORCE},*/
   };
   
   key_commands_long_default = {

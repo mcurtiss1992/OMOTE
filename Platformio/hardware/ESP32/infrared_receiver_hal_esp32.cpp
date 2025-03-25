@@ -40,6 +40,8 @@
 #include <IRutils.h>
 
 #include "infrared_receiver_hal_esp32.h"
+#include "applicationInternal/omote_log.h"
+
 
 uint8_t IR_RX_GPIO  = 15; // IR receiver input
 uint8_t IR_VCC_GPIO = 25; // IR receiver power
@@ -142,7 +144,7 @@ void start_infraredReceiver_HAL() {
   // packing as we expect and Endianness is as we expect.
   assert(irutils::lowLevelSanityCheck() == 0);
 
-  Serial.printf("\n" D_STR_IRRECVDUMP_STARTUP "\n", IR_RX_GPIO);
+  omote_log_i("\n" D_STR_IRRECVDUMP_STARTUP "\n", IR_RX_GPIO);
 #if DECODE_HASH
   // Ignore messages with less than minimum on or off pulses.
   irrecv.setUnknownThreshold(kMinUnknownSize);
@@ -162,29 +164,30 @@ void infraredReceiver_loop_HAL() {
   if (irrecv.decode(&results)) {
     // Display a crude timestamp.
     uint32_t now = millis();
-    Serial.printf(D_STR_TIMESTAMP " : %06u.%03u\n", now / 1000, now % 1000);
+    omote_log_i(D_STR_TIMESTAMP " : %06u.%03u\n", now / 1000, now % 1000);
     // Check if we got an IR message that was to big for our capture buffer.
     if (results.overflow)
-      Serial.printf(D_WARN_BUFFERFULL "\n", kCaptureBufferSize);
+      omote_log_i(D_WARN_BUFFERFULL "\n", kCaptureBufferSize);
     // Display the library version the message was captured with.
-    Serial.println(D_STR_LIBRARY "   : v" _IRREMOTEESP8266_VERSION_STR "\n");
+    omote_log_i(D_STR_LIBRARY "   : v" _IRREMOTEESP8266_VERSION_STR "\n");
     // Display the tolerance percentage if it has been change from the default.
     if (kTolerancePercentage != kTolerance)
-      Serial.printf(D_STR_TOLERANCE " : %d%%\n", kTolerancePercentage);
+      omote_log_i(D_STR_TOLERANCE " : %d%%\n", kTolerancePercentage);
     // Display the basic output of what we found.
     Serial.print(resultToHumanReadableBasic(&results));
     // Display any extra A/C info if we have it.
     String description = IRAcUtils::resultAcToString(&results);
-    if (description.length()) Serial.println(D_STR_MESGDESC ": " + description);
+    if (description.length())
+      omote_log_i(D_STR_MESGDESC ": %d", description);
     yield();  // Feed the WDT as the text output can take a while to print.
 #if LEGACY_TIMING_INFO
     // Output legacy RAW timing info of the result.
-    Serial.println(resultToTimingInfo(&results));
+    omote_log_i(resultToTimingInfo(&results));
     yield();  // Feed the WDT (again)
 #endif  // LEGACY_TIMING_INFO
     // Output the results as source code
-    Serial.println(resultToSourceCode(&results));
-    Serial.println();    // Blank line between entries
+    omote_log_i("%s", resultToSourceCode(&results).c_str());
+    omote_log_i();    // Blank line between entries
 
     String message = "";
     message += typeToString((&results)->decode_type, (&results)->repeat);

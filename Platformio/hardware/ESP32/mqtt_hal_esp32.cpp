@@ -6,6 +6,8 @@
 #include "keyboard_ble_hal_esp32.h"
 #endif
 #include "secrets.h"
+#include "applicationInternal/omote_log.h"
+
 
 #if (ENABLE_WIFI_AND_MQTT == 1)
 WiFiClient espClient;
@@ -28,7 +30,7 @@ bool getIsWifiConnected_HAL() {
 
 // WiFi status event
 void WiFiEvent(WiFiEvent_t event){
-  //Serial.printf("[WiFi-event] event: %d\r\n", event);
+  //omote_log_i("[WiFi-event] event: %d\r\n", event);
   if(event == ARDUINO_EVENT_WIFI_STA_GOT_IP){
     // connection to MQTT server will be done in checkMQTTconnection()
     // mqttClient.setServer(MQTT_SERVER, 1883); // MQTT initialization
@@ -40,13 +42,13 @@ void WiFiEvent(WiFiEvent_t event){
   if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP || event == ARDUINO_EVENT_WIFI_STA_GOT_IP6) {
     isWifiConnected = true;
     thisAnnounceWiFiconnected_cb(true);
-    Serial.printf("WiFi connected, IP address: %s\r\n", WiFi.localIP().toString().c_str());
+    omote_log_i("WiFi connected, IP address: %s\r\n", WiFi.localIP().toString().c_str());
 
   } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
     isWifiConnected = false;
     thisAnnounceWiFiconnected_cb(false);
     // automatically try to reconnect
-    Serial.printf("WiFi got disconnected. Will try to reconnect.\r\n");
+    omote_log_i("WiFi got disconnected. Will try to reconnect.\r\n");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   } else {
@@ -82,7 +84,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
   std::string topicReceived(topic);
   std::string strPayload(reinterpret_cast<const char *>(payload), length);
-  Serial.printf("MQTT: received topic %s with payload %s\r\n", topicReceived.c_str(), strPayload.c_str());
+  omote_log_i("MQTT: received topic %s with payload %s\r\n", topicReceived.c_str(), strPayload.c_str());
 
   if(topicReceived == subscribeTopicOMOTEConfig){
     
@@ -147,7 +149,7 @@ void mqtt_subscribeTopics() {
   mqttClient.subscribe(subscribeTopicOMOTE_BLEdisconnectAllClients.c_str());
   mqttClient.subscribe(subscribeTopicOMOTE_BLEprintBonds.c_str());
   mqttClient.subscribe(subscribeTopicOMOTE_BLEdeleteBonds.c_str());
-  Serial.printf("  Successfully subscribed to MQTT topics\r\n");
+  omote_log_i("  Successfully subscribed to MQTT topics\r\n");
 
 }
 
@@ -165,18 +167,18 @@ bool checkMQTTconnection() {
       
       std::string mqttClientName = std::string(MQTT_CLIENTNAME) + "_esp32_" + std::string(WiFi.macAddress().c_str());
       if (mqttClient.connect(mqttClientName.c_str(), MQTT_USER, MQTT_PASS)) {
-        Serial.printf("  Successfully connected to MQTT broker\r\n");
+        omote_log_i("  Successfully connected to MQTT broker\r\n");
     
         mqtt_subscribeTopics();
 
       } else {
-        Serial.printf("  MQTT connection failed (but WiFi is available). Will try later ...\r\n");
+        omote_log_e("  MQTT connection failed (but WiFi is available). Will try later ...\r\n");
 
       }
       return mqttClient.connected();
     }
   } else {
-    // Serial.printf("  No connection to MQTT server, because WiFi ist not connected.\r\n");
+    // omote_log_e("  No connection to MQTT server, because WiFi ist not connected.\r\n");
     return false;
   }  
 }
@@ -202,17 +204,17 @@ void mqtt_loop_HAL() {
 bool publishMQTTMessage_HAL(const char *topic, const char *payload){
 
   if (checkMQTTconnection()) {
-    // Serial.printf("Sending mqtt payload to topic \"%s\": %s\r\n", topic, payload);
+    // omote_log_i("Sending mqtt payload to topic \"%s\": %s\r\n", topic, payload);
       
     if (mqttClient.publish(topic, payload)) {
-      // Serial.printf("Publish ok\r\n");
+      // omote_log_i("Publish ok\r\n");
       return true;
     }
     else {
-      Serial.printf("Publish failed\r\n");
+      omote_log_e("Publish failed\r\n");
     }
   } else {
-    Serial.printf("  Cannot publish mqtt message, because checkMQTTconnection failed (WiFi or mqtt is not connected)\r\n");
+    omote_log_e("  Cannot publish mqtt message, because checkMQTTconnection failed (WiFi or mqtt is not connected)\r\n");
   }
   return false;
 }

@@ -95,7 +95,7 @@
      int value = lv_slider_get_value(slider);
      // Execute the command with the slider value as a parameter.
      executeCommand(data->command, std::to_string(value));
-     omote_log_v("Slider value: %d, executed command: %u\r\n", value, data->command);
+     omote_log_v(F("Slider value: %d, executed command: %u\r\n"), value, data->command);
  }
  
  // Switch event: triggered when the switch toggles.
@@ -106,7 +106,7 @@
      
      bool state = lv_obj_has_state(sw, LV_STATE_CHECKED);
      executeCommand(data->command, state ? "true" : "false");
-     omote_log_v("Switch state: %d, executed command: %u\r\n", state, data->command);
+     omote_log_v(F("Switch state: %d, executed command: %u\r\n"), state, data->command);
  }
  
  // Generic event callback for clickable buttons.
@@ -115,7 +115,7 @@
      if (!data) return;
      
      executeCommand(data->command);
-     omote_log_v("Button executed command: %u\r\n", data->command);
+     omote_log_v(F("Button executed command: %u\r\n"), data->command);
  }
  
  // ---------------------------------------------------------------------------
@@ -126,19 +126,18 @@
      // Calculate pixel positions and sizes based on parent's width and grid units.
      
      lv_obj_t* obj = NULL;
-
      const char* device = cfg.device.c_str();
      const char* comd = cfg.command.c_str();
      
      // Convert the command string (if provided) to a uint16_t.
      uint16_t cmd = getCommandValue(device, comd);
-     if(strcmp(device, "BLE") == 0){
-        cmd = getBLECommandValue(comd);
-      }
-
+     if (strcmp(device, "BLE") == 0) {
+         cmd = getBLECommandValue(comd);
+     }
+     
      if (cmd == 0) {
          // Note: In production you might want to add error checking.
-         //cmd = static_cast<uint16_t>(std::stoi(cfg.command));
+         // cmd = static_cast<uint16_t>(std::stoi(cfg.command));
      }
      
      if (cfg.type == "slider") {
@@ -181,7 +180,6 @@
      }
      
      lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_STRETCH, cfg.x, cfg.w, LV_GRID_ALIGN_CENTER, cfg.y, cfg.h);
-     
  }
  
  // ---------------------------------------------------------------------------
@@ -196,12 +194,12 @@
          return;
      }
      
-     // Suppress deprecation warnings for DynamicJsonDocument.
+     // Suppress deprecation warnings for JsonDocument.
  #pragma GCC diagnostic push
  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
      JsonDocument doc;
  #pragma GCC diagnostic pop
- 
+     
      DeserializationError error = deserializeJson(doc, content);
      if (error) {
          omote_log_e("Failed to parse GUI JSON (%s): %s\r\n", filePath.c_str(), error.f_str());
@@ -213,27 +211,27 @@
          omote_log_e("No widgets found in GUI JSON: %s\r\n", filePath.c_str());
          return;
      }
-
-     static lv_coord_t col_dsc[] = {
+     
+     // Store grid descriptors in flash.
+     static const lv_coord_t col_dsc[] PROGMEM = {
         LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1),
         LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1),
         LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1),
         LV_GRID_TEMPLATE_LAST
-    };
-    
-    // Define the row configuration: dynamic rows with a gap of 3 pixels between them
-    static lv_coord_t row_dsc[] = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, LV_GRID_TEMPLATE_LAST};
-
-       // Add content to the dynamictab
-    lv_obj_set_width(tab, SCR_WIDTH);
-    lv_obj_set_layout(tab, LV_LAYOUT_GRID);
-    lv_obj_set_grid_dsc_array(tab, col_dsc, row_dsc);
-    lv_obj_set_scrollbar_mode(tab, LV_SCROLLBAR_MODE_ACTIVE);
-
-    // Add a label, then a box for the light controls
-    lv_obj_t* menuLabel = lv_label_create(tab);
-    lv_label_set_text(menuLabel, guiName.c_str());
-
+     };
+     
+     static const lv_coord_t row_dsc[] PROGMEM = {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, LV_GRID_TEMPLATE_LAST};
+     
+     // Add content to the dynamic tab.
+     lv_obj_set_width(tab, SCR_WIDTH);
+     lv_obj_set_layout(tab, LV_LAYOUT_GRID);
+     lv_obj_set_grid_dsc_array(tab, col_dsc, row_dsc);
+     lv_obj_set_scrollbar_mode(tab, LV_SCROLLBAR_MODE_ACTIVE);
+     
+     // Add a label, then a box for the light controls.
+     lv_obj_t* menuLabel = lv_label_create(tab);
+     lv_label_set_text(menuLabel, guiName.c_str());
+     
      // Create each widget defined in the JSON.
      for (JsonObject widgetObj : widgets) {
          WidgetConfig cfg;
@@ -250,6 +248,8 @@
          
          create_widget(tab, cfg);
      }
+     widgets.clear();
+     content = "";
  }
  
  // ---------------------------------------------------------------------------
@@ -267,7 +267,7 @@
      
      // Iterate over children using child count.
      uint32_t child_cnt = lv_obj_get_child_cnt(obj);
-     for(uint32_t i = 0; i < child_cnt; i++){
+     for (uint32_t i = 0; i < child_cnt; i++) {
          lv_obj_t* child = lv_obj_get_child(obj, i);
          free_user_data_recursive(child);
      }
@@ -279,10 +279,10 @@
  // ---------------------------------------------------------------------------
  lv_obj_t* currentDynamicTab = nullptr;
  
-void set_current_dynamic_tab(lv_obj_t* curDynTab){
-    currentDynamicTab = curDynTab;
-}
-
+ void set_current_dynamic_tab(lv_obj_t* curDynTab) {
+     currentDynamicTab = curDynTab;
+ }
+ 
  // ---------------------------------------------------------------------------
  // Cleanup callback to be called before a dynamic GUI tab is deleted.
  // This version has no parameters to match the expected signature.
@@ -297,6 +297,7 @@ void set_current_dynamic_tab(lv_obj_t* curDynTab){
  // ---------------------------------------------------------------------------
  // Global mapping from registered GUI name to its dynamic file name.
  // This is used by the non-capturing callback below.
+ // ---------------------------------------------------------------------------
  static std::map<std::string, std::string> dynamicGuiFileMap;
  
  // ---------------------------------------------------------------------------
@@ -307,22 +308,20 @@ void set_current_dynamic_tab(lv_obj_t* curDynTab){
  // and then calls create_tab_content_dynamic.
  // ---------------------------------------------------------------------------
  static void create_tab_content_dynamic_wrapper(lv_obj_t* tab) {
-    // Suppose you have a way (for example, a custom property or an associated id)
-    // to determine the registered name for this tab.
-    // For example, if the tab’s “id” (or some property) is set to the registered name:
-
-
-    std::string guiName = "";
-    
-    guiName = getGuiNameByTab(tab);
-    
-    if(guiName != ""){
-        std::string fileName = dynamicGuiFileMap[guiName];
-        create_tab_content_dynamic(tab, fileName);
-    } else {
-        omote_log_e("Tab Not Found");
-    }
-  }
+     // Suppose you have a way (for example, a custom property or an associated id)
+     // to determine the registered name for this tab.
+     // For example, if the tab’s “id” (or some property) is set to the registered name:
+     std::string guiName = "";
+     
+     guiName = getGuiNameByTab(tab);
+     
+     if (guiName != "") {
+         std::string fileName = dynamicGuiFileMap[guiName];
+         create_tab_content_dynamic(tab, fileName);
+     } else {
+         omote_log_e("Tab Not Found");
+     }
+ }
  
  // ---------------------------------------------------------------------------
  // Register dynamic GUIs by reading the master guis.json file from SPIFFS.
@@ -340,7 +339,7 @@ void set_current_dynamic_tab(lv_obj_t* curDynTab){
  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
      JsonDocument doc;
  #pragma GCC diagnostic pop
- 
+     
      DeserializationError error = deserializeJson(doc, masterContent);
      if (error) {
          omote_log_e("Failed to parse master GUI JSON: %s\r\n", error.f_str());
@@ -371,5 +370,7 @@ void set_current_dynamic_tab(lv_obj_t* curDynTab){
          register_gui(name, create_tab_content_dynamic_wrapper, notify_tab_before_delete_dynamic,
                       nullptr, nullptr, nullptr, nullptr);
      }
+     guis.clear();
+     doc.clear();
  }
  

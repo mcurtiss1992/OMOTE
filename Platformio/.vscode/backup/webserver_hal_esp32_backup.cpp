@@ -90,15 +90,15 @@ void insertJsonValue(JsonDocument &root, const String &path, const String &value
 String readFile(fs::FS &fs, const char *path)
 {
     String outContent = "";
-    Serial.printf("Reading file: %s\r\n", path);
+    omote_log_i("Reading file: %s\r\n", path);
     File file = fs.open(path);
     if (!file || file.isDirectory())
     {
-        Serial.println("- failed to open file for reading");
+        omote_log_i("- failed to open file for reading");
         outContent = "- failed to open file for reading";
         return outContent;
     }
-    Serial.println("- read from file:");
+    omote_log_i("- read from file:");
     // Create a buffer to hold file content + 1 for null terminator
     size_t fileSize = file.size();
     std::unique_ptr<char[]> buf(new char[fileSize + 1]);
@@ -108,54 +108,54 @@ String readFile(fs::FS &fs, const char *path)
     buf[fileSize] = '\0';
     outContent = String(buf.get());
     file.close();
-    Serial.println(outContent);
+    omote_log_i(outContent);
     return outContent;
 }
 
 void writeFile(fs::FS &fs, const char *path, const char *message)
 {
-    Serial.printf("Writing file: %s\r\n", path);
+    omote_log_i("Writing file: %s\r\n", path);
 
     File file = fs.open(path, FILE_WRITE);
     if (!file)
     {
-        Serial.println("- failed to open file for writing");
+        omote_log_i("- failed to open file for writing");
         return;
     }
     if (file.print(message))
     {
-        Serial.println("- file written");
+        omote_log_i("- file written");
     }
     else
     {
-        Serial.println("- write failed");
+        omote_log_i("- write failed");
     }
     file.close();
 }
 
 void renameFile(fs::FS &fs, const char *path1, const char *path2)
 {
-    Serial.printf("Renaming file %s to %s\r\n", path1, path2);
+    omote_log_i("Renaming file %s to %s\r\n", path1, path2);
     if (fs.rename(path1, path2))
     {
-        Serial.println("- file renamed");
+        omote_log_i("- file renamed");
     }
     else
     {
-        Serial.println("- rename failed");
+        omote_log_i("- rename failed");
     }
 }
 
 void deleteFile(fs::FS &fs, const char *path)
 {
-    Serial.printf("Deleting file: %s\r\n", path);
+    omote_log_i("Deleting file: %s\r\n", path);
     if (fs.remove(path))
     {
-        Serial.println("- file deleted");
+        omote_log_i("- file deleted");
     }
     else
     {
-        Serial.println("- delete failed");
+        omote_log_i("- delete failed");
     }
 }
 
@@ -165,15 +165,15 @@ void webserver_setup()
     delay(100);
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
     {
-        Serial.println("SPIFFS Mount Failed");
+        omote_log_i("SPIFFS Mount Failed");
         return;
     }
-    listDir(SPIFFS, "/", 0);
+    listDir(SPIFFS, "/", 10);
 
 
 
-    Serial.println("Connecting to ");
-    Serial.println(WIFI_SSID);
+    omote_log_i("Connecting to ");
+    omote_log_i(WIFI_SSID);
 
     // connect to your local wi-fi network
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -184,10 +184,10 @@ void webserver_setup()
         delay(1000);
         Serial.print(".");
     }
-    Serial.println("");
-    Serial.println("WiFi connected..!");
+    omote_log_i("");
+    omote_log_i("WiFi connected..!");
     Serial.print("Got IP: ");
-    Serial.println(WiFi.localIP());
+    omote_log_i(WiFi.localIP());
 
     server.on("/", handle_OnConnect);
     server.on("/finishSetup", handle_FinishSetup);
@@ -203,7 +203,7 @@ void webserver_setup()
     server.on("/registerDynamicGuis", HTTP_GET, handleDynamicGuiRegistration);
     server.onNotFound(handle_NotFound);
     server.begin();
-    Serial.println("HTTP server started");
+    omote_log_i("HTTP server started");
 }
 void webserverHandleClient()
 {
@@ -481,7 +481,7 @@ String SendWifiPage()
 String SendDevicePage()
 {
     JsonDocument readData;
-    Serial.println("Reading JSON from SPIFFS: ");
+    omote_log_i("Reading JSON from SPIFFS: ");
     String json = readFile(SPIFFS, "/test.json");
     deleteFile(SPIFFS, "/test.json");
     deleteFile(SPIFFS, "/hello.txt");

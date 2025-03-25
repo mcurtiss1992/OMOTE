@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include "lib/Keypad/src/Keypad.h" // modified for inverted logic
+#include "applicationInternal/omote_log.h"
+
 
 uint8_t SW_1_GPIO = 32; // 1...5: Output
 uint8_t SW_2_GPIO = 26;
@@ -75,7 +77,7 @@ void keys_getKeys_HAL(void* ptr) {
   // Cast the void pointer to our keypad_key pointer
   keypad_key* keyArray = (keypad_key*) ptr;
   if (keyArray == nullptr) {
-    Serial.println("Error: NULL pointer passed to keys_getKeys_HAL!");
+    omote_log_i("Error: NULL pointer passed to keys_getKeys_HAL!");
     return;
   }
   

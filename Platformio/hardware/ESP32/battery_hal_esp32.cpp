@@ -32,11 +32,11 @@ void get_battery_status_HAL(int *battery_voltage, int *battery_percentage, bool 
 
     //Serial.print(" LiIon Voltage: ");
     //Serial.print(fuelGauge.getVoltage());  // Print the battery voltage
-    //Serial.println("V");
+    //omote_log_i("V");
 
     //Serial.print(" Percentage: ");
     //Serial.print(fuelGauge.getSOC(), 2); // Print the battery state of charge with 2 decimal places
-    //Serial.println("%");
+    //omote_log_i("%");
   #else
     int battery_analogRead = 0;
 

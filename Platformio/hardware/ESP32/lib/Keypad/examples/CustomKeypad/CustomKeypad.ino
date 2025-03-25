@@ -32,6 +32,6 @@ void loop(){
   char customKey = customKeypad.getKey();
   
   if (customKey){
-    Serial.println(customKey);
+    omote_log_i(customKey);
   }
 }

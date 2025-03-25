@@ -43,7 +43,7 @@ void loop() {
     loopCount++;
     if ( (millis()-startTime)>5000 ) {
         Serial.print("Average loops per second = ");
-        Serial.println(loopCount/5);
+        omote_log_i(loopCount/5);
         startTime = millis();
         loopCount = 0;
     }
@@ -71,7 +71,7 @@ void loop() {
                 }
                 Serial.print("Key ");
                 Serial.print(kpd.key[i].kchar);
-                Serial.println(msg);
+                omote_log_i(msg);
             }
         }
     }

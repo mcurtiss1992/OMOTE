@@ -24,9 +24,9 @@ void init_preferences_HAL(void) {
     activeGUIlist =(preferences.getInt("currentGUIlist"));
     lastActiveGUIlistIndex = (preferences.getInt("lastActiveIndex"));
 
-    // Serial.printf("Preferences restored: brightness %d, GUI %s, scene %s\r\n", get_backlightBrightness_HAL(), get_activeGUIname().c_str(), get_activeScene().c_str());
+    // omote_log_i("Preferences restored: brightness %d, GUI %s, scene %s\r\n", get_backlightBrightness_HAL(), get_activeGUIname().c_str(), get_activeScene().c_str());
   } else {
-    // Serial.printf("No preferences to restore\r\n");
+    // omote_log_i("No preferences to restore\r\n");
   }
   preferences.end();
 }

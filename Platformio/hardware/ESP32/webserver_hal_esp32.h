@@ -22,6 +22,8 @@ void handleEditJson(void);
 void handleListJsonFiles(void);
 void handleGetJson(void);
 void handlePutJson(void);
+void handlePostJson(void);
+void handlePostJsonUpload(void);
 void handleDynamicDeviceRegistration(void);
 void handleDynamicSceneRegistration(void);
 void handleDynamicGuiRegistration(void);

@@ -360,14 +360,14 @@ void enterSleep(){
 #ifdef ENABLE_WIFI
 // WiFi status event
 void WiFiEvent(WiFiEvent_t event){
-  //Serial.printf("[WiFi-event] event: %d\n", event);
+  //omote_log_i("[WiFi-event] event: %d\n", event);
   if(event == ARDUINO_EVENT_WIFI_STA_GOT_IP){
 
   }
   // Set status bar icon based on WiFi status
   if(event == ARDUINO_EVENT_WIFI_STA_GOT_IP || event == ARDUINO_EVENT_WIFI_STA_GOT_IP6){
     //lv_label_set_text(WifiLabel, LV_SYMBOL_WIFI);
-    Serial.println(" WiFi Connected!");
+    omote_log_i(" WiFi Connected!");
     lv_table_set_cell_value_fmt(ChecksTable, 2, 1, LV_SYMBOL_OK);
   }
   else{
@@ -580,14 +580,14 @@ void setup() {
 
   Serial.print("Setup finished in ");
   Serial.print(millis());
-  Serial.println("ms.");
+  omote_log_e("ms.");
 
 
   // Automated Checks
   uint64_t _chipmacid = 0LL;
   esp_efuse_mac_get_default((uint8_t*) (&_chipmacid));
   Serial.print("ESP32 MAC: ");
-  Serial.println(_chipmacid);
+  omote_log_e(_chipmacid);
   // Check if the touchscreen is responding
   boolean TouchInitSuccessful = false;
   Wire.beginTransmission(0x38);
@@ -632,7 +632,7 @@ void loop() {
   if(millis() - IMUTaskTimer >= 100){
     activityDetection();
     if(standbyTimer == 0){
-      Serial.println("Entering Sleep Mode. Goodbye.");
+      omote_log_i("Entering Sleep Mode. Goodbye.");
       enterSleep();
     }
     IMUTaskTimer = millis();
@@ -653,7 +653,7 @@ void loop() {
     if(customKeypad.key[i].kstate == PRESSED || customKeypad.key[i].kstate == HOLD){
       standbyTimer = SLEEP_TIMEOUT; // Reset the sleep timer when a button is pressed
       int keyCode = customKeypad.key[i].kcode;
-      //Serial.println(customKeypad.key[i].kchar);
+      //omote_log_i(customKeypad.key[i].kchar);
       // Send IR codes depending on the current device (tabview page)
       if(currentDevice == 1) IrSender.sendRC5(IrSender.encodeRC5X(0x00, keyMapTechnisat[keyCode/ROWS][keyCode%ROWS]));
       else if(currentDevice == 2) IrSender.sendSony((keyCode/ROWS)*(keyCode%ROWS), 15);
@@ -674,7 +674,7 @@ void loop() {
   // IR Test
   decode_results results;
   if (IrReceiver.decode(&results)) {
-    //Serial.println(String(results.command));
+    //omote_log_i(String(results.command));
     lv_table_set_cell_value_fmt(ChecksTable, 0, 1, LV_SYMBOL_OK);
     lv_table_set_cell_value_fmt(ChecksTable, 1, 1, LV_SYMBOL_OK);
     IrReceiver.resume(); // Enable receiving of the next value

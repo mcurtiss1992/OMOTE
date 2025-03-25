@@ -44,7 +44,7 @@ void setup(){
   kpdR.begin( makeKeymap(keysR) );
   kpd.begin( makeKeymap(keys) );
   Serial.begin(9600);
-  Serial.println( "start" );
+  omote_log_i( "start" );
 }
 
 //byte alternate = false;
@@ -57,12 +57,12 @@ void loop(){
   keyR = kpdR.getKey( );
 
   if (key){
-    Serial.println(key);
+    omote_log_i(key);
   }
   if( keyR ) {
-    Serial.println( keyR );
+    omote_log_i( keyR );
   }
   if( keyUR ) {
-    Serial.println( keyUR );
+    omote_log_i( keyUR );
   }
 }

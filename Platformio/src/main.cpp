@@ -12,19 +12,19 @@
 #include "devices/keyboard/device_keyboard_mqtt/device_keyboard_mqtt.h"
 #include "devices/keyboard/device_keyboard_ble/device_keyboard_ble.h"
 //   TV
-#include "devices/TV/device_samsungTV/device_samsungTV.h"
+//#include "devices/TV/device_samsungTV/device_samsungTV.h"
 //#include "devices/TV/device_lgTV/device_lgTV.h"
 //   AV receiver
 //#include "devices/AVreceiver/device_yamahaAmp/device_yamahaAmp.h"
-#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
+//#include "devices/AVreceiver/device_denonAvr/device_denonAvr.h"
 //#include "devices/AVreceiver/device_lgsoundbar/device_lgsoundbar.h"
 //   media player
-#include "devices/mediaPlayer/device_appleTV/device_appleTV.h"
+//#include "devices/mediaPlayer/device_appleTV/device_appleTV.h"
 //#include "devices/mediaPlayer/device_lgbluray/device_lgbluray.h"
 //#include "devices/mediaPlayer/device_samsungbluray/device_samsungbluray.h"
 //#include "devices/mediaPlayer/device_shield/device_shield.h"
 //   misc
-#include "devices/misc/device_smarthome/device_smarthome.h"
+//#include "devices/misc/device_smarthome/device_smarthome.h"
 //#include "devices/misc/device_airconditioner/device_airconditioner.h"
 // register gui and keys
 #include "applicationInternal/gui/guiBase.h"
@@ -32,21 +32,21 @@
 #include "guis/gui_sceneSelection.h"
 #include "guis/gui_irReceiver.h"
 #include "guis/gui_settings.h"
-#include "guis/gui_numpad.h"
+//#include "guis/gui_numpad.h"
 #include "guis/gui_BLEpairing.h"
-#include "devices/AVreceiver/device_yamahaAmp/gui_yamahaAmp.h"
-#include "devices/mediaPlayer/device_appleTV/gui_appleTV.h"
-#include "devices/misc/device_smarthome/gui_smarthome.h"
+//#include "devices/AVreceiver/device_yamahaAmp/gui_yamahaAmp.h"
+//#include "devices/mediaPlayer/device_appleTV/gui_appleTV.h"
+//#include "devices/misc/device_smarthome/gui_smarthome.h"
 //#include "devices/misc/device_airconditioner/gui_airconditioner.h"
 #include "applicationInternal/keys.h"
 #include "applicationInternal/gui/guiStatusUpdate.h"
 // register scenes
 #include "scenes/scene__default.h"
 #include "scenes/scene_allOff.h"
-#include "scenes/scene_TV.h"
-#include "scenes/scene_fireTV.h"
-#include "scenes/scene_chromecast.h"
-#include "scenes/scene_appleTV.h"
+//#include "scenes/scene_TV.h"
+//#include "scenes/scene_fireTV.h"
+//#include "scenes/scene_chromecast.h"
+//#include "scenes/scene_appleTV.h"
 #include "applicationInternal/scenes/sceneHandler.h"
 
 #if defined(ARDUINO)
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
   //register_device_samsungbluray();
   //register_device_shield();
   //   misc
-  register_device_smarthome();
+  //register_device_smarthome();
   //register_device_airconditioner();
 
   #if (ENABLE_KEYBOARD_MQTT == 1)
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
   register_gui_irReceiver();
   register_gui_settings();
   //register_gui_appleTV();
-  register_gui_numpad();
+  //register_gui_numpad();
   #if (ENABLE_KEYBOARD_BLE == 1)
   register_gui_blepairing();
   #endif
