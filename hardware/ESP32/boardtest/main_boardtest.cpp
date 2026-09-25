@@ -618,13 +618,13 @@ int sdCardInitSuccessful = false;
 // The two display drivers treat that register differently:
 //   DISPLAY_DRIVER 0 (LovyanGFX)  : never writes it. Measured on a rev5 board, the value after
 //                                   power-on is 0, so the controller runs at its most sensitive.
-//   DISPLAY_DRIVER 1 (Adafruit)   : touch.begin() writes it, 128 is the library's default.
+//   DISPLAY_DRIVER 1 (Arduino_GFX): touch.begin() writes it, 128 is the library's default.
 // If you see touches that nobody made, define a threshold here. It is then used by both drivers,
 // so that they behave the same. Higher = less sensitive, the register is 8 bit, so 0..255.
 // Start with 128 and go up in steps if it is not enough. If it gets too high, real touches with a
 // light finger are lost.
-// Undefined = leave the controller as it is with DISPLAY_DRIVER 0, and use the Adafruit default
-// of 128 with DISPLAY_DRIVER 1.
+// Undefined = leave the controller as it is with DISPLAY_DRIVER 0 (LovyanGFX), and use the
+// Adafruit default of 128 with DISPLAY_DRIVER 1 (Arduino_GFX).
 // The same switch exists in the firmware, in hardware/ESP32/lvgl_hal_esp32.cpp.
 // #define TOUCH_THRESHOLD 128
 
