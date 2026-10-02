@@ -297,8 +297,8 @@ void updateDockedState() {
   firstCheck = false;
   lastCheck = millis();
 
-  int voltage, percentage;
-  bool charging;
+  int voltage = 0, percentage = 0;
+  bool charging = false;
   get_battery_status_HAL(&voltage, &percentage, &charging);
   bool wasDocked = docked;
   if (charging || voltage >= DOCKED_ON_VOLTAGE_MV) {
