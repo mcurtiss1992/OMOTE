@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include "SparkFunLIS3DH.h"
 #include "sleep_hal_esp32.h"
 // before going to sleep, some tasks have to be done

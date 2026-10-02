@@ -183,7 +183,15 @@ bool checkMQTTconnection() {
   }  
 }
 
-unsigned long reconnectInterval = 100;
+// The reconnect blocks for up to 3 s. Retrying constantly starves the main loop (and with it the web server and the MQTT keepalive),
+// so back off while the broker is unreachable.
+const unsigned long RECONNECT_INTERVAL_FIRST = 100;
+const unsigned long RECONNECT_INTERVAL_MIN = 5000;
+const unsigned long RECONNECT_INTERVAL_MAX = 30000;
+// if the broker stays unreachable this long while WiFi claims to be connected, assume the WiFi link is stuck and rebuild it
+const uint8_t RECONNECT_FAILS_BEFORE_WIFI_RESET = 12;
+unsigned long reconnectInterval = RECONNECT_INTERVAL_FIRST;
+uint8_t reconnectFails = 0;
 // in order to do reconnect immediately ...
 unsigned long lastReconnectAttempt = millis() - reconnectInterval - 1;
 void mqtt_loop_HAL() {
@@ -192,7 +200,18 @@ void mqtt_loop_HAL() {
     if ((currentMillis - lastReconnectAttempt) > reconnectInterval) {
       lastReconnectAttempt = currentMillis;
       // Attempt to reconnect
-      checkMQTTconnection();
+      if (checkMQTTconnection()) {
+        reconnectInterval = RECONNECT_INTERVAL_FIRST;
+        reconnectFails = 0;
+      } else if (WiFi.isConnected()) {
+        reconnectInterval = (reconnectInterval < RECONNECT_INTERVAL_MIN) ? RECONNECT_INTERVAL_MIN : min(reconnectInterval * 2, RECONNECT_INTERVAL_MAX);
+        if (++reconnectFails >= RECONNECT_FAILS_BEFORE_WIFI_RESET) {
+          reconnectFails = 0;
+          omote_log_e("MQTT unreachable for a long time, resetting WiFi\r\n");
+          WiFi.disconnect();
+          WiFi.reconnect();
+        }
+      }
     }
   }  
 
