@@ -23,7 +23,10 @@ void update_backlightBrightness_HAL(void) {
     // fade in lasts for <backlightBrightness> ms
     ledcWrite(LEDC_CHANNEL_5, millis() - fadeInTimer);
   } else {
-    if (millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL() - 2000) {
+    if (get_isDocked_HAL() && millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL()) {
+      // docked and idle: the remote stays awake for config access, but the screen goes dark
+      ledcWrite(LEDC_CHANNEL_5, 0);
+    } else if (millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL() - 2000) {
       // less than 2000 ms until standby
       // dim backlight
       ledcWrite(LEDC_CHANNEL_5, get_backlightBrightness_HAL() * 0.3);

@@ -33,6 +33,7 @@ void get_battery_status(int *battery_voltage, int *battery_percentage, bool *bat
 void init_sleep();
 void init_IMU();
 void check_activity();
+bool get_isDocked();
 void setLastActivityTimestamp();
 uint32_t get_sleepTimeout();
 void set_sleepTimeout(uint32_t aSleepTimeout);

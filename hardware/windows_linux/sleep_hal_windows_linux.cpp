@@ -11,6 +11,7 @@ uint8_t motionThreshold;
 void init_sleep_HAL() {}
 void init_IMU_HAL(void) {}
 void check_activity_HAL() {}
+bool get_isDocked_HAL() { return false; }
 void setLastActivityTimestamp_HAL() {}
 
 uint32_t get_sleepTimeout_HAL() {

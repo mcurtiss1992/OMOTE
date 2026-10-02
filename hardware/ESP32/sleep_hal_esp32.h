@@ -16,6 +16,8 @@ uint32_t get_lastActivityTimestamp();
 void init_sleep_HAL();
 void init_IMU_HAL();
 void check_activity_HAL();
+// true while the remote sits on the charger; it then stays awake with WiFi on
+bool get_isDocked_HAL();
 void setLastActivityTimestamp_HAL();
 
 uint32_t get_sleepTimeout_HAL();

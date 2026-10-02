@@ -209,7 +209,7 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
   #if(OMOTE_HARDWARE_REV >= 5)
     update_keyboardBrightness();
   #endif
-  if(setupEnabled){
+  if(setupEnabled || get_isDocked()){
     handleRequest();
   }
   // keypad handling: get key states from hardware and process them

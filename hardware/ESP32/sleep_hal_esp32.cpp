@@ -15,6 +15,8 @@
 #include "mqtt_hal_esp32.h"
 // disconnect BLE keyboard
 #include "keyboard_ble_hal_esp32.h"
+// battery / charger state, used to detect that the remote is docked
+#include "battery_hal_esp32.h"
 // prepare keypad keys to wakeup
 #include "keypad_keys_hal_esp32.h"
 #include "applicationInternal/omote_log.h"
@@ -37,6 +39,17 @@ uint32_t sleepTimeout;
 uint8_t motionThreshold;
 // Timestamp of the last activity. Go to sleep if (millis() - lastActivityTimestamp > sleepTimeout)
 uint32_t lastActivityTimestamp;
+
+// While docked (charging) the remote does not enter deep sleep, so WiFi and the config web server stay reachable.
+// The display still turns off after the sleep timeout. Set to 0 to always sleep.
+#ifndef STAY_AWAKE_WHEN_DOCKED
+#define STAY_AWAKE_WHEN_DOCKED 1
+#endif
+// The charger status pin only reports "charging" until the battery is full, and rev 1-3 cannot sense charging at all.
+// So a battery that sits near full voltage counts as docked as well, with hysteresis against flapping.
+const int DOCKED_ON_VOLTAGE_MV = 4150;
+const int DOCKED_OFF_VOLTAGE_MV = 4100;
+bool docked = false;
 
 LIS3DH IMU(I2C_MODE, 0x19);
 Wakeup_reasons wakeup_reason;
@@ -272,8 +285,40 @@ void init_IMU_HAL(void) {
 
 }
 
+bool get_isDocked_HAL() {
+  return docked;
+}
+
+// Re-evaluate every 2 s, the fuel gauge is an I2C read
+void updateDockedState() {
+  static uint32_t lastCheck = 0;
+  static bool firstCheck = true;
+  if (!firstCheck && millis() - lastCheck < 2000) return;
+  firstCheck = false;
+  lastCheck = millis();
+
+  int voltage, percentage;
+  bool charging;
+  get_battery_status_HAL(&voltage, &percentage, &charging);
+  bool wasDocked = docked;
+  if (charging || voltage >= DOCKED_ON_VOLTAGE_MV) {
+    docked = true;
+  } else if (voltage < DOCKED_OFF_VOLTAGE_MV) {
+    docked = false;
+  }
+  if (docked != wasDocked) {
+    omote_log_i("Docked: %s (%d mV, charging %d)\r\n", docked ? "yes" : "no", voltage, charging);
+    // when taken off the dock, give the usual sleep timeout again instead of sleeping immediately
+    if (!docked) setLastActivityTimestamp_HAL();
+  }
+}
+
 void check_activity_HAL() {
   activityDetection();
+  #if (STAY_AWAKE_WHEN_DOCKED == 1)
+  updateDockedState();
+  if (docked) return;
+  #endif
   if(millis() - lastActivityTimestamp > sleepTimeout){
     omote_log_i("Entering Sleep Mode. Goodbye.");
     enterSleep();

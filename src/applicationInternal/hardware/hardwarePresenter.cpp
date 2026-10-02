@@ -85,6 +85,9 @@ void init_IMU() {
 void check_activity() {
   check_activity_HAL();
 };
+bool get_isDocked() {
+  return get_isDocked_HAL();
+}
 void setLastActivityTimestamp() {
   setLastActivityTimestamp_HAL();
 };
