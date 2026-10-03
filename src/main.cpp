@@ -256,4 +256,8 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
     updateHardwareStatusAndShowOnGUI();
   }
 
+  #if defined(ARDUINO)
+  // yield the CPU so the idle task runs and the loop doesn't spin at 100% (heat, WiFi/BLE task latency)
+  delay(1);
+  #endif
 }
