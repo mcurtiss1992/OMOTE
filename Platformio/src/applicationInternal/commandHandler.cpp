@@ -258,6 +258,10 @@ void executeCommand(uint16_t command, std::string additionalPayload) {
   catch (const std::out_of_range& oor) {
     omote_log_e("executeCommand: internal error, command not registered\r\n");
   }
+  catch (const std::exception& e) {
+    // e.g. std::stoi/std::stoull on a malformed payload from a config file. Without this the remote would reboot.
+    omote_log_e("executeCommand: command '%u' failed: %s\r\n", command, e.what());
+  }
 }
 
 void receiveNewIRmessage_cb(std::string message) {

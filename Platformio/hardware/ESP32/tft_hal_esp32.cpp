@@ -113,21 +113,30 @@ void init_tft(void) {
   tft.setSwapBytes(true);
 }
 
+// This is called on every pass of the main loop. Only touch the LEDC peripheral when the duty actually changes.
+static void setBacklightDuty(uint32_t duty) {
+  static int32_t lastDuty = -1;
+  if ((int32_t)duty != lastDuty) {
+    ledcWrite(5, duty);
+    lastDuty = duty;
+  }
+}
+
 void update_backligthBrighness_HAL(void) {
   // A variable declared static inside a function is visible only inside that function, exists only once (not created/destroyed for each call) and is permanent. It is in a sense a private global variable.
   static int fadeInTimer = millis(); // fadeInTimer = time after setup
   if (millis() < fadeInTimer + backlightBrightness) {
     // after boot or wakeup, fade in backlight brightness
     // fade in lasts for <backlightBrightness> ms
-    ledcWrite(5, millis() - fadeInTimer);
+    setBacklightDuty(millis() - fadeInTimer);
   } else {
     if (millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL() - 2000) {
       // less than 2000 ms until standby
       // dim backlight
-      ledcWrite(5, get_backlightBrightness_HAL() * 0.3);
+      setBacklightDuty(get_backlightBrightness_HAL() * 3 / 10);
     } else {
       // normal mode, set full backlightBrightness
-      ledcWrite(5, backlightBrightness);
+      setBacklightDuty(backlightBrightness);
     }
   }
 }

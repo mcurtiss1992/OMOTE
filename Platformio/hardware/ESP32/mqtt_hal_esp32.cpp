@@ -28,6 +28,18 @@ bool getIsWifiConnected_HAL() {
   return isWifiConnected;
 }
 
+// mqttClient.connect() blocks the main loop (DNS lookup + TCP connect timeout) while the broker is not
+// reachable. It used to be retried every 100 ms, and on every MQTT key press, which froze keys and GUI.
+// Now failed attempts back off exponentially, and nothing is tried while no broker is configured.
+static const unsigned long reconnectIntervalMin = 1000;
+static const unsigned long reconnectIntervalMax = 60000;
+static unsigned long reconnectInterval = reconnectIntervalMin;
+static unsigned long nextReconnectAttempt = 0;
+
+static bool isMQTTbrokerConfigured() {
+  return (strlen(MQTT_SERVER) > 0) && (strcmp(MQTT_SERVER, "IPAddressOfYourBroker") != 0);
+}
+
 // WiFi status event
 void WiFiEvent(WiFiEvent_t event){
   //omote_log_i("[WiFi-event] event: %d\r\n", event);
@@ -41,6 +53,9 @@ void WiFiEvent(WiFiEvent_t event){
   // Set status bar icon based on WiFi status
   if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP || event == ARDUINO_EVENT_WIFI_STA_GOT_IP6) {
     isWifiConnected = true;
+    // new connection: try MQTT right away
+    reconnectInterval = reconnectIntervalMin;
+    nextReconnectAttempt = millis();
     thisAnnounceWiFiconnected_cb(true);
     omote_log_i("WiFi connected, IP address: %s\r\n", WiFi.localIP().toString().c_str());
 
@@ -158,6 +173,9 @@ bool checkMQTTconnection() {
   if (WiFi.isConnected()) {
     if (mqttClient.connected()) {
       return true;
+    } else if (!isMQTTbrokerConfigured() || ((long)(millis() - nextReconnectAttempt) < 0)) {
+      // no broker configured, or the last attempt failed recently
+      return false;
     } else {
       // try to connect to mqtt server
       mqttClient.setBufferSize(512);   // default is 256
@@ -168,11 +186,14 @@ bool checkMQTTconnection() {
       std::string mqttClientName = std::string(MQTT_CLIENTNAME) + "_esp32_" + std::string(WiFi.macAddress().c_str());
       if (mqttClient.connect(mqttClientName.c_str(), MQTT_USER, MQTT_PASS)) {
         omote_log_i("  Successfully connected to MQTT broker\r\n");
+        reconnectInterval = reconnectIntervalMin;
     
         mqtt_subscribeTopics();
 
       } else {
-        omote_log_e("  MQTT connection failed (but WiFi is available). Will try later ...\r\n");
+        omote_log_e("  MQTT connection failed (but WiFi is available). Will try again in %lu ms\r\n", reconnectInterval);
+        nextReconnectAttempt = millis() + reconnectInterval;
+        reconnectInterval = min(reconnectInterval * 2, reconnectIntervalMax);
 
       }
       return mqttClient.connected();
@@ -183,17 +204,10 @@ bool checkMQTTconnection() {
   }  
 }
 
-unsigned long reconnectInterval = 100;
-// in order to do reconnect immediately ...
-unsigned long lastReconnectAttempt = millis() - reconnectInterval - 1;
 void mqtt_loop_HAL() {
   if (!mqttClient.connected()) {
-    unsigned long currentMillis = millis();
-    if ((currentMillis - lastReconnectAttempt) > reconnectInterval) {
-      lastReconnectAttempt = currentMillis;
-      // Attempt to reconnect
-      checkMQTTconnection();
-    }
+    // Attempt to reconnect, if an attempt is due
+    checkMQTTconnection();
   }  
 
   if (mqttClient.connected()) {

@@ -88,10 +88,6 @@ int main(int argc, char *argv[]) {
   //register_device_samsungTV();
 //  register_device_lgTV();
   //   AV receiver
-  #if defined(ARDUINO)
-    registerDynamicDevices();
-
-  #endif
   //register_device_yamahaAmp();
   //register_device_denonAvr();
   //register_device_lgsoundbar();
@@ -111,6 +107,11 @@ int main(int argc, char *argv[]) {
   register_device_keyboard_ble();
   #endif
   register_keyboardCommands();
+
+  #if defined(ARDUINO)
+  // devices from the config files. After the keyboard, because BLE commands refer to the BLE keyboard keys.
+  registerDynamicDevices();
+  #endif
 
   // Register the GUIs. They will be displayed in the order they have been registered.
   register_gui_sceneSelection();
@@ -145,8 +146,16 @@ int main(int argc, char *argv[]) {
   //set_scenes_on_sceneSelectionGUI({scene_name_TV, scene_name_fireTV, scene_name_chromecast, scene_name_appleTV});
 
   #if defined(ARDUINO)
-    registerDynamicScenes();
-    registerDynamicGuis();
+  // GUIs before scenes, because a scene can define which GUIs are shown while it is active
+  registerDynamicGuis();
+  registerDynamicScenes();
+  #endif
+
+  #if (ENABLE_WIFI_AND_MQTT == 1)
+  // the config app restarted the remote to apply a new configuration: stay in setup mode
+  if (consumeRestartIntoSetupMode()) {
+    setupEnabled = true;
+  }
   #endif
 
   // init GUI - will initialize tft, touch and lvgl

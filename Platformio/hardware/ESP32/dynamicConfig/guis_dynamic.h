@@ -1,27 +1,22 @@
 #ifndef GUIS_DYNAMIC_H
 #define GUIS_DYNAMIC_H
 
-#include <lvgl.h>
+#include <string>
 
 /**
  * @brief Registers dynamic GUIs by reading the master guis.json file from SPIFFS.
  *
  * The master file should list all GUIs with "name" and "guiname", and each individual GUI
- * is loaded from a file named "gui_[guiname].json". The GUI tab content is created dynamically
- * based on the JSON configuration.
+ * is loaded from a file named "gui_[guiname].json". The files are parsed once here; the
+ * tab content is created from that parsed copy whenever the tab is shown.
+ * Has to be called after the dynamic devices have been registered.
  */
 void register_dynamic_guis();
 
-void set_current_dynamic_tab(lv_obj_t* curDynTab);
 /**
- * @brief Callback to clean up allocated widget user data before a dynamic GUI tab is deleted.
- *
- * This function recursively frees any memory allocated for widget event data associated
- * with the tab. It is intended to be registered as the notify_tab_before_delete callback
- * for dynamic GUIs.
- *
- * @param tab_ptr Pointer to the LVGL object representing the tab.
+ * @brief Returns the name a dynamic GUI was registered with (its display name) for the
+ * internal "guiname" used in the config files. Other names are returned unchanged.
  */
-void notify_tab_before_delete_dynamic(void* tab_ptr);
+std::string dynamicGuiDisplayName(const std::string& guiname);
 
 #endif // GUIS_DYNAMIC_H
