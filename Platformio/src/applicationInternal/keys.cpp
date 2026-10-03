@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <string>
 #include "applicationInternal/gui/guiMemoryOptimizer.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"

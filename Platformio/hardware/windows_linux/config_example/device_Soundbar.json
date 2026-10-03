@@ -1,0 +1,26 @@
+[
+  {
+    "name": "power",
+    "commandType": "IR",
+    "commandData": "1",
+    "commandDataExtended": "0x34347887"
+  },
+  {
+    "name": "volume_up",
+    "commandType": "IR",
+    "commandData": "1",
+    "commandDataExtended": "0x3434E817"
+  },
+  {
+    "name": "volume_down",
+    "commandType": "IR",
+    "commandData": "1",
+    "commandDataExtended": "0x34346897"
+  },
+  {
+    "name": "mute",
+    "commandType": "IR",
+    "commandData": "1",
+    "commandDataExtended": "0x3434F807"
+  }
+]

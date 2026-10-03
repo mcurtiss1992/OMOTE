@@ -1,0 +1,40 @@
+{
+  "onSequence": [
+    {
+      "type": "command",
+      "device": "TV",
+      "command": "power"
+    },
+    {
+      "type": "command",
+      "device": "Soundbar",
+      "command": "power"
+    },
+    {
+      "type": "sleep",
+      "duration": 500
+    },
+    {
+      "type": "command",
+      "device": "TV",
+      "command": "hdmi1"
+    }
+  ],
+  "offSequence": [
+    {
+      "type": "command",
+      "device": "TV",
+      "command": "power"
+    },
+    {
+      "type": "command",
+      "device": "Soundbar",
+      "command": "power"
+    }
+  ],
+  "selectedGuis": [
+    "Scene selection",
+    "living_room",
+    "Settings"
+  ]
+}

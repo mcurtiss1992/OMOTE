@@ -14,9 +14,9 @@
 char getKeyCode(const char* keyName);
 
 /**
- * @brief Reads the master scenes file ("/scenes.json") and registers each dynamic scene.
+ * @brief Reads the master scenes file ("scenes.json") and registers each dynamic scene.
  *
- * For every scene, "/scene_<name>.json" holds the key mapping and "/<name>_gui_extras.json"
+ * For every scene, "scene_<name>.json" holds the key mapping and "<name>_gui_extras.json"
  * the on/off sequences and the GUIs shown while the scene is active.
  * Has to be called after the dynamic devices and GUIs have been registered.
  */

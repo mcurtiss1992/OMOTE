@@ -1,0 +1,17 @@
+{
+  "onSequence": [
+    {
+      "type": "command",
+      "device": "Soundbar",
+      "command": "power"
+    }
+  ],
+  "offSequence": [
+    {
+      "type": "command",
+      "device": "Soundbar",
+      "command": "power"
+    }
+  ],
+  "selectedGuis": []
+}

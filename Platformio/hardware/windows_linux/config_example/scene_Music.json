@@ -1,0 +1,33 @@
+{
+  "Power": {
+    "device": "Soundbar",
+    "command": "power"
+  },
+  "VolumeUp": {
+    "device": "Soundbar",
+    "command": "volume_up"
+  },
+  "VolumeDown": {
+    "device": "Soundbar",
+    "command": "volume_down"
+  },
+  "Mute": {
+    "device": "Soundbar",
+    "command": "mute"
+  },
+  "PlayPause": {
+    "device": "BLE",
+    "command": "KEYBOARD_BLE_PLAYPAUSE"
+  },
+  "Forward": {
+    "device": "BLE",
+    "command": "KEYBOARD_BLE_SCAN_NEXT_TRACK"
+  },
+  "Rewind": {
+    "device": "BLE",
+    "command": "KEYBOARD_BLE_SCAN_PREVIOUS_TRACK"
+  },
+  "Red": {
+    "scene": "Watch TV"
+  }
+}

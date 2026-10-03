@@ -48,6 +48,10 @@
 //#include "scenes/scene_chromecast.h"
 //#include "scenes/scene_appleTV.h"
 #include "applicationInternal/scenes/sceneHandler.h"
+// devices, scenes and GUIs from the config files written by the OMOTE Config app
+#include "applicationInternal/dynamicConfig/devices_dynamic.h"
+#include "applicationInternal/dynamicConfig/scenes_dynamic.h"
+#include "applicationInternal/dynamicConfig/guis_dynamic.h"
 
 #if defined(ARDUINO)
 // in case of Arduino we have a setup() and a loop()
@@ -108,10 +112,8 @@ int main(int argc, char *argv[]) {
   #endif
   register_keyboardCommands();
 
-  #if defined(ARDUINO)
   // devices from the config files. After the keyboard, because BLE commands refer to the BLE keyboard keys.
-  registerDynamicDevices();
-  #endif
+  register_dynamic_devices();
 
   // Register the GUIs. They will be displayed in the order they have been registered.
   register_gui_sceneSelection();
@@ -145,11 +147,9 @@ int main(int argc, char *argv[]) {
   // Only show these scenes on the sceneSelection gui. If you don't set this explicitely, by default all registered scenes are shown.
   //set_scenes_on_sceneSelectionGUI({scene_name_TV, scene_name_fireTV, scene_name_chromecast, scene_name_appleTV});
 
-  #if defined(ARDUINO)
-  // GUIs before scenes, because a scene can define which GUIs are shown while it is active
-  registerDynamicGuis();
-  registerDynamicScenes();
-  #endif
+  // GUIs and scenes from the config files. GUIs first, because a scene can define which GUIs are shown while it is active
+  register_dynamic_guis();
+  register_dynamic_scenes();
 
   #if (ENABLE_WIFI_AND_MQTT == 1)
   // the config app restarted the remote to apply a new configuration: stay in setup mode
@@ -198,9 +198,12 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
   // --- do as often as possible --------------------------------------------------------
   // update backlight brightness. Fade in on startup, dim before going to sleep
   update_backligthBrighness();
+  #if (ENABLE_WIFI_AND_MQTT == 1)
+  // web server for the config app
   if(setupEnabled){
     handleRequest();
   }
+  #endif
   // keypad handling: get key states from hardware and process them
   keypad_loop();
   // process IR receiver, if activated
@@ -218,23 +221,11 @@ void loop(unsigned long *pIMUTaskTimer, unsigned long *pUpdateStatusTimer) {
   // Refresh IMU data (motion detection) every 100 ms
   // If no action (key, TFT or motion), then go to sleep
   if(millis() - *pIMUTaskTimer >= 100){
-
-
-
     *pIMUTaskTimer = millis();
-
-    #if defined(ARDUINO)
-      if(setupEnabled){
-
-      } else {
+    // no sleep while setup mode is on, the config app has to be able to reach the remote
+    if (!setupEnabled) {
       check_activity();
-      }
-    #else
-      check_activity();
-    #endif
-
-    
-
+    }
   }
 
   // --- every 1000 ms ------------------------------------------------------------------

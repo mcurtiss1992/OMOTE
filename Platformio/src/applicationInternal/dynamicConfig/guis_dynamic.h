@@ -4,7 +4,7 @@
 #include <string>
 
 /**
- * @brief Registers dynamic GUIs by reading the master guis.json file from SPIFFS.
+ * @brief Registers dynamic GUIs by reading the master guis.json file.
  *
  * The master file should list all GUIs with "name" and "guiname", and each individual GUI
  * is loaded from a file named "gui_[guiname].json". The files are parsed once here; the

@@ -8,9 +8,8 @@
 #include <esp_attr.h>
 #include <esp_system.h>
 #include "webserver_hal_esp32.h"
+#include "configFiles_hal_esp32.h"
 #include "preferencesStorage_hal_esp32.h"
-#include "dynamicConfig/devices_dynamic.h"
-#include "applicationInternal/commandHandler.h"
 #include "applicationInternal/omote_log.h"
 
 #if ENABLE_WIFI_AND_MQTT == 1
@@ -32,6 +31,11 @@ static bool restartRequested = false;
 // config app comes back up in setup mode.
 #define RESTART_INTO_SETUP_MAGIC 0x5E7095E7
 RTC_NOINIT_ATTR static uint32_t restartIntoSetup;
+
+static tSendConfiguredCommand_cb thisSendConfiguredCommand_cb = NULL;
+void set_sendConfiguredCommand_cb_HAL(tSendConfiguredCommand_cb pSendConfiguredCommand_cb) {
+  thisSendConfiguredCommand_cb = pSendConfiguredCommand_cb;
+}
 
 //---------------------------------------------------------------------
 // Helpers
@@ -258,9 +262,11 @@ static void handleEditJson() {
     return;
   }
   JsonDocument jsonData;
-  if (!loadJsonFile(path.c_str(), jsonData)) {
+  std::string content;
+  if (!readConfigFile_HAL(path.substring(1).c_str(), content) || deserializeJson(jsonData, content)) {
     jsonData.to<JsonObject>();
   }
+  content.clear();
   String stringData;
   serializeJsonPretty(jsonData, stringData);
   jsonData.clear();
@@ -353,14 +359,13 @@ static void handlePostJson() {
 
 // Executes a configured command, so the config app can test it. Only commands known since the last restart are found.
 static void handleSendCommand() {
-  String device = server.arg("device");
-  String command = server.arg("command");
-  uint16_t commandId = resolveDynamicCommand(device.c_str(), command.c_str());
-  if (commandId == DYNAMIC_COMMAND_NOT_FOUND) {
+  std::string device = server.arg("device").c_str();
+  std::string command = server.arg("command").c_str();
+  std::string payload = server.arg("payload").c_str();
+  if ((thisSendConfiguredCommand_cb == NULL) || !thisSendConfiguredCommand_cb(device, command, payload)) {
     sendText(404, F("Command not found on the remote. Save it and restart the remote first."));
     return;
   }
-  executeCommand(commandId, std::string(server.arg("payload").c_str()));
   sendText(200, F("Command sent"));
 }
 
@@ -385,8 +390,8 @@ static void handleNotFound() {
 // Webserver setup and loop
 //---------------------------------------------------------------------
 
-void webserver_setup() {
-  mountConfigFS();
+void init_webserver_HAL() {
+  mountConfigFS_HAL();
 
   // Answer every request, including errors, with CORS headers. The config app is served from another origin.
   server.enableCORS(true);
@@ -412,7 +417,7 @@ void webserver_setup() {
   omote_log_i("HTTP server started\r\n");
 }
 
-void webserverHandleClient() {
+void webserver_handleClient_HAL() {
   if (!mdnsStarted && WiFi.isConnected()) {
     if (MDNS.begin(OMOTE_HOSTNAME)) {
       MDNS.addService("http", "tcp", 80);
@@ -430,13 +435,13 @@ void webserverHandleClient() {
   }
 }
 
-bool webserver_consumeRestartIntoSetup() {
+bool webserver_consumeRestartIntoSetup_HAL() {
   bool requested = (restartIntoSetup == RESTART_INTO_SETUP_MAGIC) && (esp_reset_reason() == ESP_RST_SW);
   restartIntoSetup = 0;
   return requested;
 }
 
-std::string webserver_getAddress() {
+std::string webserver_getAddress_HAL() {
   if (!WiFi.isConnected()) {
     return "";
   }

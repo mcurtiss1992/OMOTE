@@ -1,0 +1,68 @@
+[
+  {
+    "name": "power",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E040BF"
+  },
+  {
+    "name": "hdmi1",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E09768"
+  },
+  {
+    "name": "up",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E006F9"
+  },
+  {
+    "name": "down",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E08679"
+  },
+  {
+    "name": "left",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E0A659"
+  },
+  {
+    "name": "right",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E046B9"
+  },
+  {
+    "name": "ok",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E016E9"
+  },
+  {
+    "name": "menu",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E058A7"
+  },
+  {
+    "name": "back",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E01AE5"
+  },
+  {
+    "name": "channel_up",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E048B7"
+  },
+  {
+    "name": "channel_down",
+    "commandType": "IR",
+    "commandData": "2",
+    "commandDataExtended": "0xE0E008F7"
+  }
+]
