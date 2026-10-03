@@ -307,7 +307,7 @@ void create_tab_content_settings(lv_obj_t* tab) {
   menuLabel = lv_label_create(tab);
   lv_label_set_text(menuLabel, "Setup");
   menuBox = lv_obj_create(tab);
-  lv_obj_set_size(menuBox, lv_pct(100), 72);
+  lv_obj_set_size(menuBox, lv_pct(100), 80);
   lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
   lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
 

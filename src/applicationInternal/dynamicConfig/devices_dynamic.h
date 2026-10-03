@@ -1,14 +1,17 @@
 #ifndef DYNAMIC_DEVICE_REGISTRATION_H
 #define DYNAMIC_DEVICE_REGISTRATION_H
 
-#include <Arduino.h>
-#include <FS.h>
-#include <SPIFFS.h>
+#include <stdint.h>
+#include <string>
 #include <ArduinoJson.h>
-#include "applicationInternal/commandHandler.h"
+
+/*
+  Devices, scenes and GUIs can be defined in JSON files instead of in code, e.g. with the OMOTE Config app.
+  The files are read once during startup. On the ESP32 they are stored in SPIFFS, in the simulator in a folder
+  on the PC (see "hardware/windows_linux/configFiles_hal_windows_linux.cpp").
+*/
 
 // --- Configuration Constants ---
-#define FORMAT_SPIFFS_IF_FAILED true
 #define MAX_COMMANDS 200   // Limit to 200 commands
 #define MAX_NAME_LEN 32    // Maximum length for a command name ("<device>_<command>", including the terminating 0)
 
@@ -29,19 +32,14 @@ extern CommandEntry commandTable[MAX_COMMANDS];
 // --- Function Prototypes ---
 
 /**
- * @brief Mounts SPIFFS once. Safe to call several times.
- */
-bool mountConfigFS();
-
-/**
- * @brief Reads a JSON file from SPIFFS and parses it into doc.
+ * @brief Reads a config file (e.g. "devices.json") and parses it into doc.
  *
- * The file is read with a single read() into a temporary buffer, which is a lot faster than
+ * The file is read in one go into a temporary buffer, which is a lot faster than
  * letting the parser pull it byte by byte, and the buffer is freed before returning.
  *
  * @return false if the file does not exist or is not valid JSON.
  */
-bool loadJsonFile(const char* path, JsonDocument& doc);
+bool loadJsonFile(const std::string& filename, JsonDocument& doc);
 
 /**
  * @brief Computes the hash index for a given string using the DJB2 algorithm.
@@ -67,13 +65,13 @@ void register_command_dynamic(const char* name, const char* commandType, const c
 /**
  * @brief Reads a device's JSON file and registers each command dynamically.
  *
- * The function reads a JSON file named in the format "/device_<deviceName>.json", parses
+ * The function reads a JSON file named in the format "device_<deviceName>.json", parses
  * the contained JSON array, and registers each command found.
  *
  * @param deviceName The name of the device.
  * @return true if the device commands were registered successfully, false otherwise.
  */
-boolean register_dynamic_device(const char *deviceName);
+bool register_dynamic_device(const char *deviceName);
 
 /**
  * @brief Clears the command table.
@@ -85,7 +83,7 @@ void clearCommands();
 /**
  * @brief Reads a master devices file and registers each dynamic device.
  *
- * The master file (typically "/devices.json") is expected to be a JSON array of device names.
+ * The master file ("devices.json") is expected to be a JSON array of device names.
  * Has to be called after the BLE keyboard commands have been registered.
  */
 void register_dynamic_devices();
@@ -112,5 +110,12 @@ uint16_t getBLECommandValue(const std::string& commandName);
  * @return The command id, or DYNAMIC_COMMAND_NOT_FOUND.
  */
 uint16_t resolveDynamicCommand(const char* device, const char* command);
+
+/**
+ * @brief Executes a configured command, used by the "Test" buttons of the config app.
+ *
+ * @return false if no such command is registered.
+ */
+bool executeDynamicCommand(std::string device, std::string command, std::string payload);
 
 #endif // DYNAMIC_DEVICE_REGISTRATION_H

@@ -4,7 +4,7 @@
  * This file implements the loading and creation of dynamic GUI tabs.
  *
  * It performs the following:
- *  - Reads the master guis.json file (located at the SPIFFS root) which contains
+ *  - Reads the master guis.json file (from the config storage) which contains
  *    a list of GUIs (each with "name" and "guiname").
  *  - For each GUI, loads the individual JSON file (named "gui_[guiname].json")
  *    which defines a list of widgets, and keeps a compact parsed copy in RAM.
@@ -22,9 +22,10 @@
  *    - button: A clickable button with a label that executes its command when clicked.
  */
 
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <lvgl.h>
+#include <algorithm>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <map>
@@ -33,6 +34,7 @@
 #include "applicationInternal/gui/guiBase.h"
 #include "applicationInternal/gui/guiRegistry.h"
 #include "applicationInternal/gui/guiMemoryOptimizer.h"
+#include "applicationInternal/hardware/hardwarePresenter.h" // millis()
 #include "applicationInternal/omote_log.h"
 #include "devices_dynamic.h"
 #include "guis_dynamic.h"
@@ -220,7 +222,7 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
   int rows = 0;
 
   JsonDocument doc;
-  if (loadJsonFile(filePath.c_str(), doc)) {
+  if (loadJsonFile(filePath, doc)) {
     JsonArrayConst widgets = doc["widgets"].as<JsonArrayConst>();
     if (widgets.isNull()) {
       omote_log_w("No widgets found in GUI JSON: %s\r\n", filePath.c_str());
@@ -259,7 +261,7 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
         }
       }
 
-      rows = max(rows, widget.y + widget.h);
+      rows = std::max(rows, widget.y + widget.h);
       gui.widgets.push_back(widget);
     }
   }
@@ -270,12 +272,12 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
 }
 
 // ---------------------------------------------------------------------------
-// Register dynamic GUIs by reading the master guis.json file from SPIFFS.
+// Register dynamic GUIs by reading the master guis.json file.
 // Each entry in the master file should have "name" and "guiname".
 // ---------------------------------------------------------------------------
 void register_dynamic_guis() {
   JsonDocument doc;
-  if (!loadJsonFile("/guis.json", doc)) {
+  if (!loadJsonFile("guis.json", doc)) {
     return;
   }
 
@@ -298,7 +300,7 @@ void register_dynamic_guis() {
     }
 
     DynamicGui& gui = dynamicGuis[name];
-    load_gui_definition("/gui_" + guiName + ".json", gui);
+    load_gui_definition("gui_" + guiName + ".json", gui);
     guiDisplayNames[guiName] = name;
 
     register_gui(name, create_tab_content_dynamic, notify_tab_before_delete_dynamic);

@@ -197,8 +197,17 @@ void mqtt_loop_HAL() {
 
 bool publishMQTTMessage_HAL(const char *topic, const char *payload) {
 
-    if (sockfd == -1) {
+    // like on the ESP32: no attempts while MQTT_SERVER is the placeholder, and at most one connect attempt
+    // every 10 seconds, the connect (DNS lookup) blocks the GUI
+    static time_t lastConnectAttempt = 0;
+    if ((sockfd == -1) && (strcmp(MQTT_SERVER, "IPAddressOfYourBroker") != 0) && (time(NULL) - lastConnectAttempt >= 10)) {
+      lastConnectAttempt = time(NULL);
       init_mqtt_HAL();
+    }
+    if (sockfd == -1) {
+      // no broker: mqttClient was never initialized, publishing would crash the simulator
+      printf("MQTT: not connected, cannot publish %s %s\r\n", topic, payload);
+      return false;
     }
   
     mqtt_publish(&mqttClient, topic, payload, strlen(payload), MQTT_PUBLISH_QOS_0);

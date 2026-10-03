@@ -128,18 +128,21 @@ void set_backlightBrightness(uint8_t aBacklightBrightness);
 // --- lvgl -------------------------------------------------------------------
 void init_lvgl_hardware();
 
+// --- config files -----------------------------------------------------------
+// Reads a file written by the config app, e.g. "devices.json" (SPIFFS on the ESP32, a folder in the simulator).
+// Returns false if the file does not exist.
+bool readConfigFile(const std::string& filename, std::string& content);
+
 // --- WiFi / MQTT ------------------------------------------------------------
 #if (ENABLE_WIFI_AND_MQTT == 1)
 void init_mqtt(void);
+// web server for the config app
 void init_webserver_hal(void);
 void handleRequest(void);
 // true once, if the config app restarted the remote and setup mode has to be enabled again
 bool consumeRestartIntoSetupMode(void);
 // address of the web config server to show on the remote, empty while WiFi is not connected
 std::string getWebConfigAddress(void);
-void registerDynamicDevices(void);
-void registerDynamicScenes(void);
-void registerDynamicGuis(void);
 // used by "commandHandler.cpp", "sleep.cpp"
 bool getIsWifiConnected();
 void mqtt_loop();

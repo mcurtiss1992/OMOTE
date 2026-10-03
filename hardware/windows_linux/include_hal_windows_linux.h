@@ -1,6 +1,7 @@
 #pragma once
 
 #include "windows_linux/battery_hal_windows_linux.h"
+#include "windows_linux/configFiles_hal_windows_linux.h"
 #include "windows_linux/hardware_general_hal_windows_linux.h"
 #include "windows_linux/heapUsage_hal_windows_linux.h"
 #include "windows_linux/infrared_receiver_hal_windows_linux.h"
@@ -14,3 +15,4 @@
 #include "windows_linux/sleep_hal_windows_linux.h"
 #include "windows_linux/tft_hal_windows_linux.h"
 #include "windows_linux/user_led_hal_windows_linux.h"
+#include "windows_linux/webserver_hal_windows_linux.h"

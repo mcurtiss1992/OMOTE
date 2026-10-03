@@ -1,53 +1,26 @@
-#include <Arduino.h>
-#include <FS.h>
-#include <SPIFFS.h>
-#include <ArduinoJson.h>
 #include <cstring>     // For memset
+#include <cstdio>      // For snprintf
 #include <cstdlib>     // For strtol, strtoull
-#include <memory>      // For std::unique_ptr
-#include <new>         // For std::nothrow
 #include <string>      // For std::string
+#include <ArduinoJson.h>
 #include "applicationInternal/commandHandler.h"
+#include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
 #include "devices_dynamic.h"
 
 // Preallocated table for command entries
 CommandEntry commandTable[MAX_COMMANDS];
 
-// ----- SPIFFS / JSON helpers -----
-bool mountConfigFS() {
-  static bool mounted = false;
-  if (!mounted) {
-    mounted = SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED);
-    if (!mounted) {
-      omote_log_e("SPIFFS Mount Failed\r\n");
-    }
-  }
-  return mounted;
-}
-
-bool loadJsonFile(const char* path, JsonDocument& doc) {
-  if (!mountConfigFS() || !SPIFFS.exists(path)) {
-    omote_log_d("Config file not found: %s\r\n", path);
+// ----- JSON helper -----
+bool loadJsonFile(const std::string& filename, JsonDocument& doc) {
+  std::string content;
+  if (!readConfigFile(filename, content)) {
+    omote_log_d("Config file not found: %s\r\n", filename.c_str());
     return false;
   }
-  File file = SPIFFS.open(path, FILE_READ);
-  if (!file || file.isDirectory()) {
-    omote_log_e("Failed to open file for reading: %s\r\n", path);
-    return false;
-  }
-  size_t fileSize = file.size();
-  std::unique_ptr<char[]> buf(new (std::nothrow) char[fileSize + 1]);
-  if (!buf) {
-    omote_log_e("Not enough memory to read %s (%u bytes)\r\n", path, fileSize);
-    return false;
-  }
-  size_t bytesRead = file.read((uint8_t*)buf.get(), fileSize);
-  file.close();
-
-  DeserializationError error = deserializeJson(doc, (const char*)buf.get(), bytesRead);
+  DeserializationError error = deserializeJson(doc, content);
   if (error) {
-    omote_log_e("Failed to parse %s: %s\r\n", path, error.c_str());
+    omote_log_e("Failed to parse %s: %s\r\n", filename.c_str(), error.c_str());
     return false;
   }
   return true;
@@ -146,11 +119,11 @@ void register_command_dynamic(const char* name, const char* commandType, const c
 
 // ----- Dynamic Device Registration -----
 // Reads a device's JSON file and registers each command dynamically.
-boolean register_dynamic_device(const char *deviceName) {
-  String deviceFilePath = String("/device_") + deviceName + ".json";
+bool register_dynamic_device(const char *deviceName) {
+  std::string deviceFilePath = std::string("device_") + deviceName + ".json";
 
   JsonDocument device;
-  if (!loadJsonFile(deviceFilePath.c_str(), device)) {
+  if (!loadJsonFile(deviceFilePath, device)) {
     return false;
   }
 
@@ -190,7 +163,7 @@ void register_dynamic_devices() {
   clearCommands();
 
   JsonDocument devices;
-  if (!loadJsonFile("/devices.json", devices)) {
+  if (!loadJsonFile("devices.json", devices)) {
     return;
   }
 
@@ -266,4 +239,13 @@ uint16_t resolveDynamicCommand(const char* device, const char* command) {
     return getBLECommandValue(command);
   }
   return getCommandValue(device, command);
+}
+
+bool executeDynamicCommand(std::string device, std::string command, std::string payload) {
+  uint16_t commandId = resolveDynamicCommand(device.c_str(), command.c_str());
+  if (commandId == DYNAMIC_COMMAND_NOT_FOUND) {
+    return false;
+  }
+  executeCommand(commandId, payload);
+  return true;
 }

@@ -1,0 +1,60 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "content": "Lamp",
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "h": 1
+    },
+    {
+      "type": "switch",
+      "label": "Lamp",
+      "device": "Lamp",
+      "command": "power",
+      "x": 9,
+      "y": 0,
+      "w": 3,
+      "h": 1
+    },
+    {
+      "type": "text",
+      "content": "Brightness",
+      "x": 0,
+      "y": 2,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "type": "slider",
+      "label": "Brightness",
+      "device": "Lamp",
+      "command": "brightness",
+      "x": 0,
+      "y": 3,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "type": "button",
+      "label": "TV on/off",
+      "device": "TV",
+      "command": "power",
+      "x": 0,
+      "y": 5,
+      "w": 6,
+      "h": 2
+    },
+    {
+      "type": "button",
+      "label": "HDMI 1",
+      "device": "TV",
+      "command": "hdmi1",
+      "x": 6,
+      "y": 5,
+      "w": 6,
+      "h": 2
+    }
+  ]
+}

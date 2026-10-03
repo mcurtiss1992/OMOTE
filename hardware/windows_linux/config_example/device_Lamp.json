@@ -1,0 +1,14 @@
+[
+  {
+    "name": "power",
+    "commandType": "MQTT",
+    "commandData": "home/livingroom/lamp/set",
+    "commandDataExtended": "ON"
+  },
+  {
+    "name": "brightness",
+    "commandType": "MQTT",
+    "commandData": "home/livingroom/lamp/brightness/set",
+    "commandDataExtended": "50"
+  }
+]

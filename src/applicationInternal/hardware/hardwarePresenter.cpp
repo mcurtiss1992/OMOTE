@@ -7,6 +7,8 @@
 #include "../commandHandler.h"
 // for registering the callback to show WiFi status
 #include "applicationInternal/gui/guiBase.h"
+// for registering the callback to execute commands from the web config server
+#include "applicationInternal/dynamicConfig/devices_dynamic.h"
 #include "lvgl.h"
 
 // This include of "hardwareLayer.h" is the one and only link to folder "hardware". The file "hardwareLayer.h" does the differentiation between ESP32 and Windows/Linux.
@@ -253,6 +255,11 @@ void init_lvgl_hardware() {
   init_lvgl_HAL();
 };
 
+// --- config files -----------------------------------------------------------
+bool readConfigFile(const std::string& filename, std::string& content) {
+  return readConfigFile_HAL(filename, content);
+}
+
 // --- WiFi / MQTT ------------------------------------------------------------
 #if (ENABLE_WIFI_AND_MQTT == 1)
 void init_mqtt(void) {
@@ -262,31 +269,21 @@ void init_mqtt(void) {
 }
 
 void init_webserver_hal(void){
-  webserver_setup();
+  // the "Test" buttons of the config app execute configured commands
+  set_sendConfiguredCommand_cb_HAL(&executeDynamicCommand);
+  init_webserver_HAL();
 }
 
 void handleRequest(void){
-  webserverHandleClient();
+  webserver_handleClient_HAL();
 }
 
 bool consumeRestartIntoSetupMode(void) {
-  return webserver_consumeRestartIntoSetup();
+  return webserver_consumeRestartIntoSetup_HAL();
 }
 
 std::string getWebConfigAddress(void) {
-  return webserver_getAddress();
-}
-
-void registerDynamicDevices(void){
-  register_dynamic_devices();
-}
-
-void registerDynamicScenes(void){
-  register_dynamic_scenes();
-}
-
-void registerDynamicGuis(void){
-  register_dynamic_guis();
+  return webserver_getAddress_HAL();
 }
 
 // used by "commandHandler.cpp", "sleep.cpp"

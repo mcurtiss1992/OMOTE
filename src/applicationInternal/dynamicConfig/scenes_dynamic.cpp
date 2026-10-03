@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <map>
 #include <string>
@@ -7,8 +6,8 @@
 #include "applicationInternal/scenes/sceneRegistry.h"    // Provides key codes like KEY_UP, KEY_VOLUP, etc.
 #include "applicationInternal/gui/guiRegistry.h"
 #include "applicationInternal/commandHandler.h"          // Provides register_command() and makeCommandData()
+#include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
-#include "ESP32/sleep_hal_esp32.h"
 #include "devices_dynamic.h"
 #include "guis_dynamic.h"
 #include "scenes_dynamic.h"
@@ -110,7 +109,7 @@ static void runSequence(const std::vector<SequenceStep>& steps) {
     }
   }
   // a long sequence must not send the remote to sleep right after it finished
-  setLastActivityTimestamp_HAL();
+  setLastActivityTimestamp();
 }
 
 // --- Dynamic Scene Registration ---
@@ -118,9 +117,9 @@ static void register_dynamic_scene(const std::string& sceneName, DynamicScene& s
   const char* name = sceneName.c_str();
 
   // key mapping: { "<button>": {"device": "...", "command": "..."} } or { "<button>": {"scene": "..."} }
-  String filePath = String("/scene_") + name + ".json";
+  std::string filePath = "scene_" + sceneName + ".json";
   JsonDocument sceneDoc;
-  if (loadJsonFile(filePath.c_str(), sceneDoc)) {
+  if (loadJsonFile(filePath, sceneDoc)) {
     for (JsonPairConst kv : sceneDoc.as<JsonObjectConst>()) {
       const char* keyName = kv.key().c_str();
       char key = getKeyCode(keyName);
@@ -152,9 +151,9 @@ static void register_dynamic_scene(const std::string& sceneName, DynamicScene& s
   }
 
   // extras: on/off sequences and the GUIs shown while the scene is active
-  String extrasPath = String("/") + name + "_gui_extras.json";
+  std::string extrasPath = sceneName + "_gui_extras.json";
   JsonDocument extrasDoc;
-  if (loadJsonFile(extrasPath.c_str(), extrasDoc)) {
+  if (loadJsonFile(extrasPath, extrasDoc)) {
     parseSequence(extrasDoc["onSequence"].as<JsonArrayConst>(), scene.onSequence, name);
     parseSequence(extrasDoc["offSequence"].as<JsonArrayConst>(), scene.offSequence, name);
     for (JsonVariantConst gui : extrasDoc["selectedGuis"].as<JsonArrayConst>()) {
@@ -185,10 +184,10 @@ static void register_dynamic_scene(const std::string& sceneName, DynamicScene& s
               scene.keyCommandsShort.size(), scene.onSequence.size(), scene.offSequence.size(), scene.guiList.size());
 }
 
-// Reads the master scenes file ("/scenes.json") and registers each dynamic scene.
+// Reads the master scenes file ("scenes.json") and registers each dynamic scene.
 void register_dynamic_scenes() {
   JsonDocument scenesDoc;
-  if (!loadJsonFile("/scenes.json", scenesDoc)) {
+  if (!loadJsonFile("scenes.json", scenesDoc)) {
     return;
   }
 

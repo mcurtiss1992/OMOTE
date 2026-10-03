@@ -1,0 +1,49 @@
+{
+  "Power": {
+    "device": "TV",
+    "command": "power"
+  },
+  "Guide": {
+    "device": "TV",
+    "command": "menu"
+  },
+  "Back": {
+    "device": "TV",
+    "command": "back"
+  },
+  "Up": {
+    "device": "TV",
+    "command": "up"
+  },
+  "Down": {
+    "device": "TV",
+    "command": "down"
+  },
+  "OK": {
+    "device": "TV",
+    "command": "ok"
+  },
+  "VolumeUp": {
+    "device": "Soundbar",
+    "command": "volume_up"
+  },
+  "VolumeDown": {
+    "device": "Soundbar",
+    "command": "volume_down"
+  },
+  "Mute": {
+    "device": "Soundbar",
+    "command": "mute"
+  },
+  "ChannelUp": {
+    "device": "TV",
+    "command": "channel_up"
+  },
+  "ChannelDown": {
+    "device": "TV",
+    "command": "channel_down"
+  },
+  "Blue": {
+    "scene": "Music"
+  }
+}
