@@ -97,14 +97,12 @@ void notify_active_tabs_before_delete(t_gui_state *gui_state) {
     // For deletion, do not use the gui_list_index, but the name of the gui.
     // The gui_list might have changed (when switching from a scene specific list to the main list or vice versa), so index could have changed as well.
     nameOfTab = gui_state->gui_on_tab[index].GUIname;
-    lv_obj_t* tabT = gui_state->gui_on_tab[index].tab;
     if (nameOfTab == "") {
       omote_log_w("    Will not notify tab %d about deletion because it is not set\r\n", index);
     } else if (registered_guis_byName_map.count(nameOfTab) == 0) {
       omote_log_w("    Can not notify tab %d about deletion because name \"%s\" was not found in registry\r\n", index, nameOfTab.c_str());
     } else {
       omote_log_d("    Will notify tab %d with name \"%s\" about deletion\r\n", index, nameOfTab.c_str());
-      setCurrentDynamicTab(tabT);
       registered_guis_byName_map.at(nameOfTab).this_notify_tab_before_delete();
     }
   }

@@ -133,10 +133,13 @@ void init_lvgl_hardware();
 void init_mqtt(void);
 void init_webserver_hal(void);
 void handleRequest(void);
+// true once, if the config app restarted the remote and setup mode has to be enabled again
+bool consumeRestartIntoSetupMode(void);
+// address of the web config server to show on the remote, empty while WiFi is not connected
+std::string getWebConfigAddress(void);
 void registerDynamicDevices(void);
 void registerDynamicScenes(void);
 void registerDynamicGuis(void);
-void setCurrentDynamicTab(lv_obj_t* dynTab);
 // used by "commandHandler.cpp", "sleep.cpp"
 bool getIsWifiConnected();
 void mqtt_loop();

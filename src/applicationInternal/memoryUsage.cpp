@@ -120,7 +120,8 @@ void doLogMemoryUsage() {
       lv_label_set_text(MemoryUsageLabel, buffer);
     }
   } else {
-    if (MemoryUsageLabel != NULL) {
+    // called every second, don't make LVGL redraw an empty label every time
+    if ((MemoryUsageLabel != NULL) && (lv_label_get_text(MemoryUsageLabel)[0] != '\0')) {
       lv_label_set_text(MemoryUsageLabel, "");
     }
   }

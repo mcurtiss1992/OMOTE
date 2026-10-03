@@ -2,21 +2,19 @@
 #define DYNAMIC_DEVICE_REGISTRATION_H
 
 #include <Arduino.h>
-#include <WiFi.h>
 #include <FS.h>
 #include <SPIFFS.h>
-#include <WebServer.h>
-#include <PubSubClient.h>
-#include <lvgl.h>
 #include <ArduinoJson.h>
-#include "secrets.h"
 #include "applicationInternal/commandHandler.h"
-#include <cstring>  // For memset
 
 // --- Configuration Constants ---
 #define FORMAT_SPIFFS_IF_FAILED true
 #define MAX_COMMANDS 200   // Limit to 200 commands
-#define MAX_NAME_LEN 32    // Maximum length for a command name
+#define MAX_NAME_LEN 32    // Maximum length for a command name ("<device>_<command>", including the terminating 0)
+
+// Returned by the lookup functions when no command is registered under that name.
+// 0 cannot be used for this, because 0 is a valid command id.
+#define DYNAMIC_COMMAND_NOT_FOUND 0xFFFF
 
 // --- Command Table Structure ---
 struct CommandEntry {
@@ -27,10 +25,23 @@ struct CommandEntry {
 
 // Preallocated table for command entries (defined in the .cpp file)
 extern CommandEntry commandTable[MAX_COMMANDS];
-// Global counter for assigning a unique value to each command (defined in the .cpp file)
-extern uint16_t nextCommandValue;
 
 // --- Function Prototypes ---
+
+/**
+ * @brief Mounts SPIFFS once. Safe to call several times.
+ */
+bool mountConfigFS();
+
+/**
+ * @brief Reads a JSON file from SPIFFS and parses it into doc.
+ *
+ * The file is read with a single read() into a temporary buffer, which is a lot faster than
+ * letting the parser pull it byte by byte, and the buffer is freed before returning.
+ *
+ * @return false if the file does not exist or is not valid JSON.
+ */
+bool loadJsonFile(const char* path, JsonDocument& doc);
 
 /**
  * @brief Computes the hash index for a given string using the DJB2 algorithm.
@@ -48,19 +59,10 @@ uint8_t hashIndex(const char* str);
  *
  * @param name The command name.
  * @param commandType The type of command ("MQTT", "IR", "BLE").
- * @param commandData The primary command data.
- * @param commandDataExtended The extended command data.
+ * @param data IR: protocol number, MQTT: topic, BLE: peer address.
+ * @param dataExtended IR: code, MQTT: payload, BLE: KEYBOARD_BLE_* key name.
  */
-void register_command_dynamic(const char* name, const char* commandType, const char* commandData, const char* commandDataExtended);
-
-/**
- * @brief Reads file content from SPIFFS.
- *
- * @param fs The filesystem object.
- * @param path The file path.
- * @return A String containing the file content.
- */
-String readFileDevices(fs::FS &fs, const char *path);
+void register_command_dynamic(const char* name, const char* commandType, const char* data, const char* dataExtended);
 
 /**
  * @brief Reads a device's JSON file and registers each command dynamically.
@@ -84,16 +86,31 @@ void clearCommands();
  * @brief Reads a master devices file and registers each dynamic device.
  *
  * The master file (typically "/devices.json") is expected to be a JSON array of device names.
+ * Has to be called after the BLE keyboard commands have been registered.
  */
 void register_dynamic_devices();
 
 /**
- * @brief Looks up a command in the command table by name.
+ * @brief Looks up a dynamically registered command by device and command name.
  *
- * This function demonstrates how to search for a command using the same hash function.
- *
- * @param lookupName The name of the command to look up.
+ * @return The command id, or DYNAMIC_COMMAND_NOT_FOUND.
  */
-void lookup_command(const char* lookupName);
+uint16_t getCommandValue(const char* device, const char* command);
+
+/**
+ * @brief Maps a KEYBOARD_BLE_* name to the command id of the BLE keyboard key.
+ *
+ * @return The command id, or DYNAMIC_COMMAND_NOT_FOUND.
+ */
+uint16_t getBLECommandValue(const std::string& commandName);
+
+/**
+ * @brief Resolves a "device"/"command" pair as written by the config app.
+ *
+ * The pseudo device "BLE" addresses the built-in BLE keyboard keys.
+ *
+ * @return The command id, or DYNAMIC_COMMAND_NOT_FOUND.
+ */
+uint16_t resolveDynamicCommand(const char* device, const char* command);
 
 #endif // DYNAMIC_DEVICE_REGISTRATION_H

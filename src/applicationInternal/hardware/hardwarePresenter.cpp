@@ -269,6 +269,14 @@ void handleRequest(void){
   webserverHandleClient();
 }
 
+bool consumeRestartIntoSetupMode(void) {
+  return webserver_consumeRestartIntoSetup();
+}
+
+std::string getWebConfigAddress(void) {
+  return webserver_getAddress();
+}
+
 void registerDynamicDevices(void){
   register_dynamic_devices();
 }
@@ -279,10 +287,6 @@ void registerDynamicScenes(void){
 
 void registerDynamicGuis(void){
   register_dynamic_guis();
-}
-
-void setCurrentDynamicTab(lv_obj_t* dynTab){
-  set_current_dynamic_tab(dynTab);
 }
 
 // used by "commandHandler.cpp", "sleep.cpp"

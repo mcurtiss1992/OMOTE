@@ -1,3 +1,5 @@
+#include <cstring>
+#include <string>
 #include <lvgl.h>
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/memoryUsage.h"
@@ -13,6 +15,7 @@ LV_IMG_DECLARE(low_brightness);
 lv_obj_t* objBattSettingsVoltage;
 lv_obj_t* objBattSettingsPercentage;
 //lv_obj_t* objBattSettingsIscharging;
+static lv_obj_t* objSetupAddress;
 bool setupEnabled = false;
 
 // Display Backlight Slider Event handler
@@ -77,9 +80,29 @@ static void showMemoryUsage_event_cb(lv_event_t* e) {
   setShowMemoryUsage(lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED));
 }
 
-// show memory usage event handler
+// setup mode (web config) event handler
 static void setupMode_event_cb(lv_event_t* e) {
   setupEnabled = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
+  updateSetupAddressOnGUI();
+}
+
+void updateSetupAddressOnGUI() {
+  if (objSetupAddress == NULL) return;
+  std::string text;
+  if (!setupEnabled) {
+    text = "Off";
+  } else {
+    #if (ENABLE_WIFI_AND_MQTT == 1)
+    text = getWebConfigAddress();
+    #endif
+    if (text.empty()) {
+      text = "Waiting for WiFi...";
+    }
+  }
+  // only redraw when the text changed, this is called every second
+  if (strcmp(lv_label_get_text(objSetupAddress), text.c_str()) != 0) {
+    lv_label_set_text(objSetupAddress, text.c_str());
+  }
 }
 
 void create_tab_content_settings(lv_obj_t* tab) {
@@ -280,23 +303,32 @@ void create_tab_content_settings(lv_obj_t* tab) {
   } else {
     // lv_obj_clear_state(memoryUsageToggle, LV_STATE_CHECKED);
   }
-    // Setup Mode ------------------------------------------------------------------------
-    menuLabel = lv_label_create(tab);
-    lv_label_set_text(menuLabel, "Setup");
-    menuBox = lv_obj_create(tab);
-    lv_obj_set_size(menuBox, lv_pct(100), 48);
-    lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
-    lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
-    
-    menuLabel = lv_label_create(menuBox);
-    lv_label_set_text(menuLabel, "Toggle Settup Mode");
-    lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 0, 3);
-    lv_obj_t* setupModeToggle = lv_switch_create(menuBox);
-    lv_obj_set_size(setupModeToggle, 40, 22);
-    lv_obj_align(setupModeToggle, LV_ALIGN_TOP_RIGHT, 0, 0);
-    lv_obj_set_style_bg_color(setupModeToggle, lv_color_hex(0x505050), LV_PART_MAIN);
-    lv_obj_add_event_cb(setupModeToggle, setupMode_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
-  
+  // Setup Mode ------------------------------------------------------------------------
+  menuLabel = lv_label_create(tab);
+  lv_label_set_text(menuLabel, "Setup");
+  menuBox = lv_obj_create(tab);
+  lv_obj_set_size(menuBox, lv_pct(100), 72);
+  lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
+  lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
+
+  menuLabel = lv_label_create(menuBox);
+  lv_label_set_text(menuLabel, "Web config");
+  lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 0, 3);
+  lv_obj_t* setupModeToggle = lv_switch_create(menuBox);
+  lv_obj_set_size(setupModeToggle, 40, 22);
+  lv_obj_align(setupModeToggle, LV_ALIGN_TOP_RIGHT, 0, 0);
+  lv_obj_set_style_bg_color(setupModeToggle, lv_color_hex(0x505050), LV_PART_MAIN);
+  lv_obj_add_event_cb(setupModeToggle, setupMode_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+  // the tab is recreated when swiping, so the switch has to show the current state
+  if (setupEnabled) {
+    lv_obj_add_state(setupModeToggle, LV_STATE_CHECKED);
+  }
+  // where the config app can reach the remote
+  objSetupAddress = lv_label_create(menuBox);
+  lv_label_set_text(objSetupAddress, "");
+  lv_obj_set_style_text_font(objSetupAddress, &lv_font_montserrat_12, LV_PART_MAIN);
+  lv_obj_align(objSetupAddress, LV_ALIGN_TOP_LEFT, 0, 32);
+  updateSetupAddressOnGUI();
 }
 
 void notify_tab_before_delete_settings(void) {
@@ -304,6 +336,7 @@ void notify_tab_before_delete_settings(void) {
   // They must check if object is NULL and must not use it if so
   objBattSettingsVoltage = NULL;
   objBattSettingsPercentage = NULL;
+  objSetupAddress = NULL;
 }
 
 void register_gui_settings(void){

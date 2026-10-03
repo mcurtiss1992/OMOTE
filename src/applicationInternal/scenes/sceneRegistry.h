@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 #include "applicationInternal/keys.h"
@@ -8,9 +9,11 @@
 typedef std::vector<std::string> t_gui_list;
 typedef std::vector<std::string> t_scene_list;
 
-typedef void (*scene_setKeys)(void);
-typedef void (*scene_start_sequence)(void);
-typedef void (*scene_end_sequence)(void);
+// std::function instead of plain function pointers, so that scenes loaded from the config files
+// can bring their own start/end sequences. Plain functions can be passed exactly as before.
+typedef std::function<void(void)> scene_setKeys;
+typedef std::function<void(void)> scene_start_sequence;
+typedef std::function<void(void)> scene_end_sequence;
 typedef t_gui_list *gui_list;
 typedef t_scene_list *scene_list;
 

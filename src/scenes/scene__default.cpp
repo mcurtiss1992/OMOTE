@@ -34,6 +34,18 @@ std::map<char, uint16_t> key_commands_long_default;
 t_gui_list main_gui_list;
 
 void register_scene_defaultKeys(void) {
+  // This function is called again every time a gui or scene is registered (see setKeysForAllRegisteredGUIsAndScenes()).
+  // Register the commands only once and before they are used in the maps below. Registering them on every call
+  // added four new entries to the command map per registered gui and scene.
+  static bool commandsRegistered = false;
+  if (!commandsRegistered) {
+    register_command(&SCENE_SELECTION                , makeCommandData(SCENE, {scene_name_selection}));
+    register_command(&SCENE_BACK_TO_PREVIOUS_GUI_LIST, makeCommandData(SCENE, {scene_back_to_previous_gui_list}));
+    register_command(&GUI_PREV                       , makeCommandData(SCENE, {scene_gui_prev}));
+    register_command(&GUI_NEXT                       , makeCommandData(SCENE, {scene_gui_next}));
+    commandsRegistered = true;
+  }
+
   key_repeatModes_default = {
                                                                                                              {KEY_OFF,   SHORT            },
     {KEY_STOP,  SHORT            },    {KEY_REWI,  SHORTorLONG      },    {KEY_PLAY,  SHORT            },    {KEY_FORW,  SHORTorLONG      },
@@ -64,10 +76,5 @@ void register_scene_defaultKeys(void) {
   
   
   };
-
-  register_command(&SCENE_SELECTION                , makeCommandData(SCENE, {scene_name_selection}));
-  register_command(&SCENE_BACK_TO_PREVIOUS_GUI_LIST, makeCommandData(SCENE, {scene_back_to_previous_gui_list}));
-  register_command(&GUI_PREV                       , makeCommandData(SCENE, {scene_gui_prev}));
-  register_command(&GUI_NEXT                       , makeCommandData(SCENE, {scene_gui_next}));
 
 }

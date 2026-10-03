@@ -15,29 +15,39 @@
 
 byte backlightBrightness = 255;
 
+// This is called on every pass of the main loop. Only touch the LEDC peripheral when the duty actually changes.
+// 256 is used as the "PWM stopped" marker.
+static int32_t lastBacklightDuty = -1;
+static void setBacklightDuty(uint32_t duty) {
+  if ((int32_t)duty != lastBacklightDuty) {
+    ledcWrite(LEDC_CHANNEL_5, duty);
+    lastBacklightDuty = duty;
+  }
+}
+
 void update_backlightBrightness_HAL(void) {
   // A variable declared static inside a function is visible only inside that function, exists only once (not created/destroyed for each call) and is permanent. It is in a sense a private global variable.
   static int fadeInTimer = millis(); // fadeInTimer = time after setup
   if (millis() < fadeInTimer + backlightBrightness) {
     // after boot or wakeup, fade in backlight brightness
     // fade in lasts for <backlightBrightness> ms
-    ledcWrite(LEDC_CHANNEL_5, millis() - fadeInTimer);
+    setBacklightDuty(millis() - fadeInTimer);
   } else {
     if (get_isDocked_HAL() && millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL()) {
       // docked and idle: the remote stays awake for config access, but the screen goes dark
-      ledcWrite(LEDC_CHANNEL_5, 0);
+      setBacklightDuty(0);
     } else if (millis() - get_lastActivityTimestamp() > get_sleepTimeout_HAL() - 2000) {
       // less than 2000 ms until standby
       // dim backlight
-      ledcWrite(LEDC_CHANNEL_5, get_backlightBrightness_HAL() * 0.3);
+      setBacklightDuty(get_backlightBrightness_HAL() * 3 / 10);
     } else {
       // normal mode, set full backlightBrightness
       // turn off PWM if backlight is at full brightness
-      if(backlightBrightness < 255){
-        ledcWrite(LEDC_CHANNEL_5, backlightBrightness);
-      }
-      else{
+      if (backlightBrightness < 255) {
+        setBacklightDuty(backlightBrightness);
+      } else if (lastBacklightDuty != 256) {
         ledc_stop(LEDC_SPEED_MODE, LEDC_CHANNEL_5, 255);
+        lastBacklightDuty = 256;
       }
     }
   }
