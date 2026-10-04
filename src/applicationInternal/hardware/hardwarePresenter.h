@@ -82,6 +82,9 @@ void set_irReceiverEnabled(bool aIrReceiverEnabled);
 // --- BLE keyboard -----------------------------------------------------------
 #if (ENABLE_KEYBOARD_BLE == 1)
 void init_keyboardBLE();
+// persisted on/off switch for the BLE keyboard; changing it restarts the remote (frees the BLE heap when off)
+bool keyboardBLE_isEnabled();
+void keyboardBLE_setEnabled(bool enabled);
 // used by "device_keyboard_ble.cpp", "sleep.cpp"
 typedef uint8_t MediaKeyReport[2];
 const uint8_t BLE_KEY_UP_ARROW = 0xDA;

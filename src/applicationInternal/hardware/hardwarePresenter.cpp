@@ -180,6 +180,12 @@ void init_keyboardBLE() {
 }
 // used by "device_keyboard_ble.cpp", "sleep.cpp"
 
+bool keyboardBLE_isEnabled() {
+  return keyboardBLE_isEnabled_HAL();
+}
+void keyboardBLE_setEnabled(bool enabled) {
+  keyboardBLE_setEnabled_HAL(enabled);
+}
 void keyboardBLE_startAdvertisingForAll() {
   keyboardBLE_startAdvertisingForAll_HAL();
 }

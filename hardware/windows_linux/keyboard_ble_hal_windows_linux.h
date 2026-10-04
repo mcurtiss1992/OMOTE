@@ -25,6 +25,8 @@ const MediaKeyReport KEY_MEDIA_VOLUME_DOWN = {0, 0};
 void keyboardBLE_startAdvertisingForAll_HAL();
 void keyboardBLE_startAdvertisingWithWhitelist_HAL(std::string peersAllowed);
 void keyboardBLE_startAdvertisingDirected_HAL(std::string peerAddress, bool isRandomAddress);
+bool keyboardBLE_isEnabled_HAL();
+void keyboardBLE_setEnabled_HAL(bool enabled);
 void keyboardBLE_stopAdvertising_HAL();
 void keyboardBLE_printConnectedClients_HAL();
 void keyboardBLE_disconnectAllClients_HAL();

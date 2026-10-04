@@ -26,6 +26,9 @@ void set_announceBLEmessage_cb_HAL(tAnnounceBLEmessage_cb pAnnounceBLEmessage_cb
   thisAnnounceBLEmessage_cb = pAnnounceBLEmessage_cb;  
 };
 
+static bool bleEnabledSim = true;
+bool keyboardBLE_isEnabled_HAL() {return bleEnabledSim;}
+void keyboardBLE_setEnabled_HAL(bool enabled) {bleEnabledSim = enabled;}
 void init_keyboardBLE_HAL() {};
 bool keyboardBLE_isAdvertising_HAL() {return false;};
 bool keyboardBLE_isConnected_HAL() {return false;};

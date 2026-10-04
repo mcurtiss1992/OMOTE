@@ -2,6 +2,7 @@
 
 #include <nvs.h>
 #include <nvs_flash.h>
+#include <Preferences.h>
 
 #include "lib/ESP32-BLE-Keyboard/BleKeyboard.h"
 #include "battery_hal_esp32.h"
@@ -11,43 +12,76 @@
 
 BleKeyboard bleKeyboard("OMOTE Keyboard", "CoretechR");
 
+// The NimBLE stack costs tens of KB of heap while it runs. It is only started when the user has it switched on
+// (Settings > Bluetooth). Changing the setting restarts the remote, so the heap is completely free again afterwards.
+static bool bleActive = false;
+
+bool keyboardBLE_isEnabled_HAL() {
+  Preferences prefs;
+  prefs.begin("ble", false);  // read-write so a missing namespace is created instead of logging an error
+  bool on = prefs.getBool("enabled", true);
+  prefs.end();
+  return on;
+}
+
+void keyboardBLE_setEnabled_HAL(bool enabled) {
+  if (enabled == keyboardBLE_isEnabled_HAL()) return;
+  Preferences prefs;
+  prefs.begin("ble", false);
+  prefs.putBool("enabled", enabled);
+  prefs.end();
+  omote_log_w("Bluetooth %s, restarting\r\n", enabled ? "enabled" : "disabled");
+  delay(300);
+  ESP.restart();
+}
+
 void keyboardBLE_startAdvertisingForAll_HAL() {
+  if (!bleActive) return;
   bleKeyboard.startAdvertisingForAll();
 }
 
 void keyboardBLE_startAdvertisingWithWhitelist_HAL(std::string peersAllowed) {
+  if (!bleActive) return;
   bleKeyboard.startAdvertisingWithWhitelist(peersAllowed);
 }
 
 void keyboardBLE_startAdvertisingDirected_HAL(std::string peerAddress, bool isRandomAddress) {
+  if (!bleActive) return;
   bleKeyboard.startAdvertisingDirected(peerAddress, isRandomAddress);
 }
 
 void keyboardBLE_stopAdvertising_HAL() {
+  if (!bleActive) return;
   bleKeyboard.stopAdvertising();
 }
 
 void keyboardBLE_printConnectedClients_HAL() {
+  if (!bleActive) return;
   bleKeyboard.printConnectedClients();
 }
 
 void keyboardBLE_disconnectAllClients_HAL() {
+  if (!bleActive) return;
   bleKeyboard.disconnectAllClients();
 }
 
 void keyboardBLE_printBonds_HAL() {
+  if (!bleActive) return;
   bleKeyboard.printBonds();
 }
 
 std::string keyboardBLE_getBonds_HAL() {
+  if (!bleActive) return "";
   return bleKeyboard.getBonds();
 }
 
 void keyboardBLE_deleteBonds_HAL() {
+  if (!bleActive) return;
   bleKeyboard.deleteBonds();
 }
 
 bool keyboardBLE_forceConnectionToAddress_HAL(std::string peerAddress) {
+  if (!bleActive) return false;
   return bleKeyboard.forceConnectionToAddress(peerAddress);
 }
 
@@ -153,6 +187,11 @@ void delete_bonds_if_NimBLE_version_changed() {
 }
 
 void init_keyboardBLE_HAL() {
+  if (!keyboardBLE_isEnabled_HAL()) {
+    omote_log_w("Bluetooth is switched off in Settings, BLE stack not started\r\n");
+    return;
+  }
+  bleActive = true;
   delete_bonds_if_NimBLE_version_changed();
 
   int battery_voltage;
@@ -168,42 +207,51 @@ void init_keyboardBLE_HAL() {
 }
 
 bool keyboardBLE_isAdvertising_HAL() {
+  if (!bleActive) return false;
   return bleKeyboard.isAdvertising();
 }
 
 bool keyboardBLE_isConnected_HAL() {
+  if (!bleActive) return false;
   return bleKeyboard.isConnected();
 }
 
 void keyboardBLE_shutdown_HAL() {
+  if (!bleActive) return;
   bleKeyboard.end();
 }
     
 void keyboardBLE_write_HAL(uint8_t c) {
+  if (!bleActive) return;
   bleKeyboard.write(c);
 }
 
 void keyboardBLE_longpress_HAL(uint8_t c) {
+  if (!bleActive) return;
   bleKeyboard.press(c);
   delay(1000);
   bleKeyboard.release(c);
 }
 
 void keyboardBLE_home_HAL() {
+  if (!bleActive) return;
   bleKeyboard.press(KEY_LEFT_ALT);
   bleKeyboard.press(KEY_ESC);
   bleKeyboard.releaseAll();
 }
 
 void keyboardBLE_sendString_HAL(const std::string &s) {
+  if (!bleActive) return;
   bleKeyboard.print(s.c_str());
 }
 
 void consumerControlBLE_write_HAL(const MediaKeyReport value) {
+  if (!bleActive) return;
   bleKeyboard.write(value);
 }
 
 void consumerControlBLE_longpress_HAL(const MediaKeyReport value) {
+  if (!bleActive) return;
   bleKeyboard.press(value);
   delay(1000);
   bleKeyboard.release(value);

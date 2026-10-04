@@ -86,6 +86,13 @@ static void setupMode_event_cb(lv_event_t* e) {
   updateSetupAddressOnGUI();
 }
 
+#if (ENABLE_KEYBOARD_BLE == 1)
+// Bluetooth switch event handler: saves the setting and restarts the remote
+static void bleEnable_event_cb(lv_event_t* e) {
+  keyboardBLE_setEnabled(lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED));
+}
+#endif
+
 void updateSetupAddressOnGUI() {
   if (objSetupAddress == NULL) return;
   std::string text;
@@ -281,6 +288,32 @@ void create_tab_content_settings(lv_obj_t* tab) {
   // lv_label_set_text(objBattSettingsIscharging, "Is charging:");
   // lv_obj_align(objBattSettingsIscharging, LV_ALIGN_TOP_LEFT, 0, 64);
 
+
+  #if (ENABLE_KEYBOARD_BLE == 1)
+  // Bluetooth keyboard: when off, the BLE stack is not started and its heap stays free ----------
+  menuLabel = lv_label_create(tab);
+  lv_label_set_text(menuLabel, "Bluetooth");
+  menuBox = lv_obj_create(tab);
+  lv_obj_set_size(menuBox, lv_pct(100), 64);
+  lv_obj_set_style_bg_color(menuBox, color_primary, LV_PART_MAIN);
+  lv_obj_set_style_border_width(menuBox, 0, LV_PART_MAIN);
+
+  menuLabel = lv_label_create(menuBox);
+  lv_label_set_text(menuLabel, "BLE keyboard");
+  lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 0, 3);
+  lv_obj_t* bleToggle = lv_switch_create(menuBox);
+  lv_obj_set_size(bleToggle, 40, 22);
+  lv_obj_align(bleToggle, LV_ALIGN_TOP_RIGHT, 0, 0);
+  lv_obj_set_style_bg_color(bleToggle, lv_color_hex(0x505050), LV_PART_MAIN);
+  lv_obj_add_event_cb(bleToggle, bleEnable_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+  if (keyboardBLE_isEnabled()) {
+    lv_obj_add_state(bleToggle, LV_STATE_CHECKED);
+  }
+  menuLabel = lv_label_create(menuBox);
+  lv_label_set_text(menuLabel, "Restarts the remote");
+  lv_obj_set_style_text_font(menuLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+  lv_obj_align(menuLabel, LV_ALIGN_TOP_LEFT, 0, 32);
+  #endif
 
   // Memory statistics ------------------------------------------------------------------------
   menuLabel = lv_label_create(tab);

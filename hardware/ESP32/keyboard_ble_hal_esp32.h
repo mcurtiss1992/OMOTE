@@ -18,6 +18,8 @@ typedef void (*tAnnounceBLEmessage_cb)(std::string message);
 extern tAnnounceBLEmessage_cb thisAnnounceBLEmessage_cb;
 void set_announceBLEmessage_cb_HAL(tAnnounceBLEmessage_cb pAnnounceBLEmessage_cb);
 
+bool keyboardBLE_isEnabled_HAL();
+void keyboardBLE_setEnabled_HAL(bool enabled);
 void init_keyboardBLE_HAL();
 bool keyboardBLE_isAdvertising_HAL();
 bool keyboardBLE_isConnected_HAL();

@@ -80,16 +80,17 @@ int main(int argc, char *argv[]) {
   register_gui_irReceiver();
   register_gui_settings();
   #if (ENABLE_KEYBOARD_BLE == 1)
-  register_gui_blepairing();
+  const bool bleOn = keyboardBLE_isEnabled();
+  if (bleOn) register_gui_blepairing();
   #endif
   // Only show these GUIs in the main gui list. If you don't set this explicitely, by default all registered guis are shown.
   #if (USE_SCENE_SPECIFIC_GUI_LIST != 0)
   main_gui_list =
     {tabName_sceneSelection, tabName_settings, tabName_irReceiver
-    #if (ENABLE_KEYBOARD_BLE == 1)
-    , tabName_blepairing
-    #endif
     };
+  #if (ENABLE_KEYBOARD_BLE == 1)
+  if (bleOn) main_gui_list.push_back(tabName_blepairing);
+  #endif
   #endif
 
   // register the scenes and their key_commands_*
