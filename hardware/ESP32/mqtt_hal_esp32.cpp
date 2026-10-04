@@ -225,6 +225,46 @@ void mqtt_loop_HAL() {
   }
 }
 
+// Plain HTTP/1.0 GET over WiFiClient. HTTPClient pulls in the TLS stack and overflows IRAM on the ESP32.
+bool httpGet_HAL(const char *url) {
+  if (!isWifiConnected) {
+    omote_log_w("HTTP GET %s: WiFi is not connected\r\n", url);
+    return false;
+  }
+  std::string u(url);
+  if (u.compare(0, 7, "http://") != 0) {
+    omote_log_e("HTTP GET: url has to start with http://: %s\r\n", url);
+    return false;
+  }
+  u.erase(0, 7);
+  size_t slash = u.find('/');
+  std::string hostPort = u.substr(0, slash);
+  std::string path = (slash == std::string::npos) ? "/" : u.substr(slash);
+  uint16_t port = 80;
+  size_t colon = hostPort.find(':');
+  std::string host = hostPort.substr(0, colon);
+  if (colon != std::string::npos) port = atoi(hostPort.c_str() + colon + 1);
+
+  WiFiClient client;
+  client.setTimeout(2);
+  if (!client.connect(host.c_str(), port, 1500)) {
+    omote_log_e("HTTP GET %s: connect failed\r\n", url);
+    return false;
+  }
+  client.printf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", path.c_str(), host.c_str());
+  String status = client.readStringUntil('\n');
+  client.stop();
+  int code = 0;
+  int sp = status.indexOf(' ');
+  if (sp > 0) code = status.substring(sp + 1).toInt();
+  if (code >= 200 && code < 300) {
+    omote_log_i("HTTP GET %s: %d\r\n", url, code);
+    return true;
+  }
+  omote_log_e("HTTP GET %s failed: '%s'\r\n", url, status.c_str());
+  return false;
+}
+
 bool publishMQTTMessage_HAL(const char *topic, const char *payload){
 
   if (checkMQTTconnection()) {

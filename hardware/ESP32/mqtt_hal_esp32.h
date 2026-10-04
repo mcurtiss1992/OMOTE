@@ -6,6 +6,7 @@ void init_mqtt_HAL(void);
 bool getIsWifiConnected_HAL();
 void mqtt_loop_HAL();
 bool publishMQTTMessage_HAL(const char *topic, const char *payload);
+bool httpGet_HAL(const char *url);
 void wifi_shutdown_HAL();
 
 typedef void (*tAnnounceWiFiconnected_cb)(bool connected);

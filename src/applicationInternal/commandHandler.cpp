@@ -191,6 +191,21 @@ void executeCommandWithData(uint16_t command, commandData commandData, std::stri
       publishMQTTMessage(topic.c_str(), payload.c_str());
       break;
     }
+
+    case HTTP: {
+      // payload 0: base url, payload 1: request appended to the base url (replaced by additionalPayload if given)
+      auto current = commandData.commandPayloads.begin();
+      std::string url = *current;
+      if (additionalPayload == "") {
+        current = std::next(current, 1);
+        url += *current;
+      } else {
+        url += additionalPayload;
+      }
+      omote_log_d("execute: will send HTTP GET '%s'\r\n", url.c_str());
+      httpGet(url.c_str());
+      break;
+    }
     #endif
 
     #if (ENABLE_KEYBOARD_BLE == 1)

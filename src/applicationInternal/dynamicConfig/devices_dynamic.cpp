@@ -70,6 +70,13 @@ void register_command_dynamic(const char* name, const char* commandType, const c
   } else if (strcmp(commandType, "MQTT") == 0) {
     // data: topic, dataExtended: payload
     cmd = makeCommandData(MQTT, {data, dataExtended});
+  } else if (strcmp(commandType, "HTTP") == 0) {
+    // data: base url (http://host/path?), dataExtended: request appended to it. A GET is sent.
+    if (strncmp(data, "http://", 7) != 0) {
+      omote_log_e("Command %s: HTTP url '%s' has to start with http://, command ignored\r\n", name, data);
+      return;
+    }
+    cmd = makeCommandData(HTTP, {data, dataExtended});
 #endif
 #if (ENABLE_KEYBOARD_BLE == 1)
   } else if (strcmp(commandType, "BLE") == 0) {

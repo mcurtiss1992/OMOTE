@@ -302,6 +302,9 @@ void mqtt_loop() {
 bool publishMQTTMessage(const char *topic, const char *payload) {
   return publishMQTTMessage_HAL(topic, payload);
 }
+bool httpGet(const char *url) {
+  return httpGet_HAL(url);
+}
 void wifi_shutdown() {
   wifi_shutdown_HAL();
 }

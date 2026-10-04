@@ -220,6 +220,12 @@ bool publishMQTTMessage_HAL(const char *topic, const char *payload) {
   return true;
 }
 
+bool httpGet_HAL(const char *url) {
+  // the simulator does not talk to devices, only the emulator service in the config stack does
+  printf("HTTP: GET %s (not sent by the simulator)\r\n", url);
+  return true;
+}
+
 void wifi_shutdown_HAL() {
   /* disconnect */
   if (sockfd != -1) {

@@ -150,6 +150,8 @@ std::string getWebConfigAddress(void);
 bool getIsWifiConnected();
 void mqtt_loop();
 bool publishMQTTMessage(const char *topic, const char *payload);
+// blocking HTTP GET with a short timeout, true if the server answered 2xx
+bool httpGet(const char *url);
 void wifi_shutdown();
 #endif
 

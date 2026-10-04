@@ -84,6 +84,7 @@ enum commandHandlers {
   IR,
   #if (ENABLE_WIFI_AND_MQTT == 1)
   MQTT,
+  HTTP,
   #endif
   #if (ENABLE_KEYBOARD_BLE == 1)
   BLE_KEYBOARD,
