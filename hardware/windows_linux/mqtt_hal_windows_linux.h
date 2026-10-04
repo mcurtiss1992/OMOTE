@@ -6,7 +6,8 @@ void init_mqtt_HAL(void);
 bool getIsWifiConnected_HAL();
 void mqtt_loop_HAL();
 bool publishMQTTMessage_HAL(const char *topic, const char *payload);
-bool httpGet_HAL(const char *url);
+// body (optional) receives the response body, at most 4 KB
+bool httpGet_HAL(const char *url, std::string *body = nullptr);
 void wifi_shutdown_HAL();
 
 typedef void (*tAnnounceWiFiconnected_cb)(bool connected);

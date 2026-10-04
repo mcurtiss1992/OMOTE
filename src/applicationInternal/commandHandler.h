@@ -85,6 +85,7 @@ enum commandHandlers {
   #if (ENABLE_WIFI_AND_MQTT == 1)
   MQTT,
   HTTP,
+  HTTP_TOGGLE,
   #endif
   #if (ENABLE_KEYBOARD_BLE == 1)
   BLE_KEYBOARD,

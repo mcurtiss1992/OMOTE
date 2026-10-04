@@ -151,7 +151,7 @@ bool getIsWifiConnected();
 void mqtt_loop();
 bool publishMQTTMessage(const char *topic, const char *payload);
 // blocking HTTP GET with a short timeout, true if the server answered 2xx
-bool httpGet(const char *url);
+bool httpGet(const char *url, std::string *body = nullptr);
 void wifi_shutdown();
 #endif
 

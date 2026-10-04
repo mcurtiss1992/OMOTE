@@ -226,7 +226,7 @@ void mqtt_loop_HAL() {
 }
 
 // Plain HTTP/1.0 GET over WiFiClient. HTTPClient pulls in the TLS stack and overflows IRAM on the ESP32.
-bool httpGet_HAL(const char *url) {
+bool httpGet_HAL(const char *url, std::string *body) {
   if (!isWifiConnected) {
     omote_log_w("HTTP GET %s: WiFi is not connected\r\n", url);
     return false;
@@ -253,6 +253,22 @@ bool httpGet_HAL(const char *url) {
   }
   client.printf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", path.c_str(), host.c_str());
   String status = client.readStringUntil('\n');
+  if (body != nullptr) {
+    body->clear();
+    while (client.connected() || client.available()) {
+      String line = client.readStringUntil('\n');
+      if (line.length() == 0 || line == "\r") break;
+    }
+    while ((client.connected() || client.available()) && body->size() < 4096) {
+      int c = client.read();
+      if (c < 0) {
+        if (!client.connected()) break;
+        delay(1);
+        continue;
+      }
+      body->push_back((char)c);
+    }
+  }
   client.stop();
   int code = 0;
   int sp = status.indexOf(' ');

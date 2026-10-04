@@ -206,6 +206,38 @@ void executeCommandWithData(uint16_t command, commandData commandData, std::stri
       httpGet(url.c_str());
       break;
     }
+
+    case HTTP_TOGGLE: {
+      // payload 0: base url, payload 1: "statusRequest|needle|requestIfFound|requestIfNotFound"
+      // The status request is read first. If its answer contains the needle, requestIfFound is sent, else requestIfNotFound.
+      auto current = commandData.commandPayloads.begin();
+      std::string baseUrl = *current;
+      std::string spec = *std::next(current, 1);
+      std::string parts[4];
+      size_t start = 0;
+      for (int i = 0; i < 4; i++) {
+        size_t bar = (i < 3) ? spec.find('|', start) : std::string::npos;
+        parts[i] = spec.substr(start, bar == std::string::npos ? std::string::npos : bar - start);
+        if (bar == std::string::npos) break;
+        start = bar + 1;
+      }
+      std::string body;
+      std::string statusUrl = baseUrl + parts[0];
+      if (!parts[0].empty() && parts[0][0] == '/') {
+        // absolute path on the same host
+        size_t hostEnd = baseUrl.find('/', 7);
+        statusUrl = baseUrl.substr(0, hostEnd) + parts[0];
+      }
+      if (!httpGet(statusUrl.c_str(), &body)) {
+        omote_log_e("execute: HTTP toggle, status request '%s' failed\r\n", statusUrl.c_str());
+        break;
+      }
+      const std::string &request = (body.find(parts[1]) != std::string::npos) ? parts[2] : parts[3];
+      std::string url = baseUrl + request;
+      omote_log_d("execute: will send HTTP toggle GET '%s'\r\n", url.c_str());
+      httpGet(url.c_str());
+      break;
+    }
     #endif
 
     #if (ENABLE_KEYBOARD_BLE == 1)

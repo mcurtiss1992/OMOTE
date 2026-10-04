@@ -4,6 +4,7 @@
 #include <string>      // For std::string
 #include <vector>
 #include <list>
+#include <algorithm>
 #include <ArduinoJson.h>
 #include "applicationInternal/commandHandler.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
@@ -77,6 +78,13 @@ void register_command_dynamic(const char* name, const char* commandType, const c
       return;
     }
     cmd = makeCommandData(HTTP, {data, dataExtended});
+  } else if (strcmp(commandType, "HTTP_TOGGLE") == 0) {
+    // data: base url, dataExtended: statusRequest|needle|requestIfFound|requestIfNotFound
+    if ((strncmp(data, "http://", 7) != 0) || (std::count(dataExtended, dataExtended + strlen(dataExtended), '|') != 3)) {
+      omote_log_e("Command %s: HTTP_TOGGLE needs an http:// url and 'statusRequest|needle|requestIfFound|requestIfNotFound', command ignored\r\n", name);
+      return;
+    }
+    cmd = makeCommandData(HTTP_TOGGLE, {data, dataExtended});
 #endif
 #if (ENABLE_KEYBOARD_BLE == 1)
   } else if (strcmp(commandType, "BLE") == 0) {
