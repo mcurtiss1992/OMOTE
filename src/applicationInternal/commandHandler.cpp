@@ -8,7 +8,6 @@
 #include "applicationInternal/scenes/sceneHandler.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
-#include "devices/misc/device_specialCommands.h"
 // show WiFi status
 #include "applicationInternal/gui/guiBase.h"
 // show received IR and MQTT messages
@@ -120,26 +119,6 @@ void register_keyboardCommands() {
   KEYBOARD_MUTE                = KEYBOARD_BLE_MUTE;
   KEYBOARD_VOLUME_INCREMENT    = KEYBOARD_BLE_VOLUME_INCREMENT;
   KEYBOARD_VOLUME_DECREMENT    = KEYBOARD_BLE_VOLUME_DECREMENT;
-#elif (ENABLE_KEYBOARD_MQTT == 1)
-  KEYBOARD_UP                  = KEYBOARD_MQTT_UP;
-  KEYBOARD_DOWN                = KEYBOARD_MQTT_DOWN;
-  KEYBOARD_RIGHT               = KEYBOARD_MQTT_RIGHT;
-  KEYBOARD_LEFT                = KEYBOARD_MQTT_LEFT;
-  KEYBOARD_SELECT              = KEYBOARD_MQTT_SELECT;
-  KEYBOARD_SENDSTRING          = KEYBOARD_MQTT_SENDSTRING;
-  KEYBOARD_BACK                = KEYBOARD_MQTT_BACK;
-  KEYBOARD_HOME                = KEYBOARD_MQTT_HOME;
-  KEYBOARD_MENU                = KEYBOARD_MQTT_MENU;
-  KEYBOARD_SCAN_PREVIOUS_TRACK = KEYBOARD_MQTT_SCAN_PREVIOUS_TRACK;
-  KEYBOARD_REWIND_LONG         = KEYBOARD_MQTT_REWIND_LONG;
-  KEYBOARD_REWIND              = KEYBOARD_MQTT_REWIND;
-  KEYBOARD_PLAYPAUSE           = KEYBOARD_MQTT_PLAYPAUSE;
-  KEYBOARD_FASTFORWARD         = KEYBOARD_MQTT_FASTFORWARD;
-  KEYBOARD_FASTFORWARD_LONG    = KEYBOARD_MQTT_FASTFORWARD_LONG;
-  KEYBOARD_SCAN_NEXT_TRACK     = KEYBOARD_MQTT_SCAN_NEXT_TRACK;
-  KEYBOARD_MUTE                = KEYBOARD_MQTT_MUTE;
-  KEYBOARD_VOLUME_INCREMENT    = KEYBOARD_MQTT_VOLUME_INCREMENT;
-  KEYBOARD_VOLUME_DECREMENT    = KEYBOARD_MQTT_VOLUME_DECREMENT;
 #else
   // Of course keyboard commands will not work if neither BLE nor MQTT keyboard is enabled, but at least code will compile.
   // But you have to change keys.cpp, gui_numpad.cpp and commandHandler.cpp where keyboard commands are used so that a command can be executed successfully.
@@ -233,15 +212,6 @@ void executeCommandWithData(uint16_t command, commandData commandData, std::stri
       // let the sceneHandler find and show the gui
       omote_log_d("execute: will send gui command to the sceneHandler\r\n");
       handleGUI(command, commandData, additionalPayload);
-      break;
-    }
-    
-    case SPECIAL: {
-      if (command == MY_SPECIAL_COMMAND) {
-        // do your special command here
-        omote_log_d("execute: could execute a special command here, if you define one\r\n");
-
-      }
       break;
     }
   }

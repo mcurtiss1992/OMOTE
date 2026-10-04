@@ -8,7 +8,6 @@
 //#include "devices/misc/device_smarthome/gui_smarthome.h"
 // scenes
 #include "scene__default.h"
-#include "scenes/scene_allOff.h"
 //#include "scenes/scene_TV.h"
 //#include "scenes/scene_fireTV.h"
 //#include "scenes/scene_chromecast.h"
@@ -60,7 +59,6 @@ void register_scene_defaultKeys(void) {
   };
   
   key_commands_short_default = {
-                                                                                                             {KEY_OFF,   SCENE_ALLOFF_FORCE},
     /*{KEY_STOP,  GUI_SMARTHOME_ACTIVATE},/*{KEY_REWI,  COMMAND_UNKNOWN  }, {KEY_PLAY,  COMMAND_UNKNOWN  },    {KEY_FORW,  COMMAND_UNKNOWN  },*/
   /*{KEY_CONF,  COMMAND_UNKNOWN  },                                                                          {KEY_INFO,  COMMAND_UNKNOWN  },*/
                                                      /*  {KEY_UP,    COMMAND_UNKNOWN  },*/

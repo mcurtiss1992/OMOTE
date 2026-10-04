@@ -4,21 +4,19 @@
 #include <list>
 #include <map>
 
-#include "devices/keyboard/device_keyboard_mqtt/device_keyboard_mqtt.h"
 #include "devices/keyboard/device_keyboard_ble/device_keyboard_ble.h"
 
 extern uint16_t COMMAND_UNKNOWN;
 
 /*
-  Depending on which keyboard is enabled (BLE or MQTT), we define KEYBOARD_UP, KEYBOARD_DOWN and so on.
+  Depending on which keyboard is enabled (BLE or none), we define KEYBOARD_UP, KEYBOARD_DOWN and so on.
   These defines are used in keys.cpp, gui*.cpp and commandHandler.cpp
   Example:
   If BLE  is enabled, then KEYBOARD_UP will be the same as KEYBOARD_BLE_UP
-  If MQTT is enabled, then KEYBOARD_UP will be the same as KEYBOARD_MQTT_UP
-  If none of them is enabled, then KEYBOARD_UP will be the same as KEYBOARD_UP_DUMMY
+  If it is not enabled, then KEYBOARD_UP will be the same as KEYBOARD_UP_DUMMY
   Doing so you can switch between the keyboards without changing the UI code (keys.cpp, gui*.cpp and commandHandler.cpp)
   If you need something different than this behaviour, then you can change the code in 'register_keyboardCommands()'
-  or you can of course change keys.cpp, gui*.cpp and commandHandler.cpp so that they directly use KEYBOARD_BLE_UP or KEYBOARD_MQTT_UP etc.
+  or you can of course change keys.cpp, gui*.cpp and commandHandler.cpp so that they directly use KEYBOARD_BLE_UP etc.
 */
 
 extern uint16_t KEYBOARD_DUMMY_UP;
@@ -43,10 +41,8 @@ extern uint16_t KEYBOARD_DUMMY_VOLUME_DECREMENT;
 
 #if (ENABLE_KEYBOARD_BLE == 1)
   #define KEYBOARD_PREFIX KEYBOARD_BLE_
-#elif (ENABLE_KEYBOARD_MQTT == 1)
-  #define KEYBOARD_PREFIX KEYBOARD_MQTT_
 #else
-  // Of course keyboard commands will not work if neither BLE nor MQTT keyboard is enabled, but at least code will compile.
+  // Of course keyboard commands will not work if the BLE keyboard is not enabled, but at least code will compile.
   // But you have to change keys.cpp, gui_numpad.cpp and commandHandler.cpp where keyboard commands are used so that a command can be executed successfully.
   // Search for "executeCommand(Key" to find them.
   #define KEYBOARD_PREFIX KEYBOARD_DUMMY_
@@ -82,17 +78,7 @@ extern uint16_t KEYBOARD_VOLUME_DECREMENT;
 //  * Concatenate preprocessor tokens A and B after macro-expanding them.
 //  */
 // #define PPCAT(A, B) PPCAT_NX(A, B)
-// 
-// Test
-// https://stackoverflow.com/questions/5256313/c-c-macro-string-concatenation
-// #define STR(x) #x
-// #define XSTR(x) STR(x)
-// #pragma message "1 The value is: " XSTR(KEYBOARD_BLE_UP)
-// #pragma message "2 The value is: " XSTR(KEYBOARD_MQTT_UP)
-// #pragma message "3 The value is: " XSTR(KEYBOARD_UP)
-
 enum commandHandlers {
-  SPECIAL,
   SCENE,
   GUI,
   IR,
