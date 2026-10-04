@@ -23,6 +23,11 @@
 
 WebServer server(80);
 
+// mDNS (omote.local) costs about 8 KB of heap, and this board has only ~20 KB free with WiFi, BLE and LVGL running.
+// With it enabled, open connections can run the heap dry and the web server stalls. Enable with -D ENABLE_MDNS=1.
+#ifndef ENABLE_MDNS
+#define ENABLE_MDNS 0
+#endif
 static bool mdnsStarted = false;
 static unsigned long restartRequestedAt = 0;
 static bool restartRequested = false;
@@ -108,7 +113,7 @@ static void handleRoot() {
   String html = F("<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'>"
                   "<title>OMOTE</title></head><body style='font-family:sans-serif;max-width:40em;margin:2em auto;padding:0 1em'>"
                   "<h1>OMOTE setup mode</h1>"
-                  "<p>Open the OMOTE Config app and set the remote address to <b>http://" OMOTE_HOSTNAME ".local</b> or <b>http://");
+                  "<p>Open the OMOTE Config app and set the remote address to <b>http://");
   html += WiFi.localIP().toString();
   html += F("</b>.</p><p><a href='/listJson'>Configuration files</a> &middot; <a href='/status'>Status</a></p></body></html>");
   server.send(200, F("text/html; charset=UTF-8"), html);
@@ -418,6 +423,7 @@ void init_webserver_HAL() {
 }
 
 void webserver_handleClient_HAL() {
+  #if (ENABLE_MDNS == 1)
   if (!mdnsStarted && WiFi.isConnected()) {
     if (MDNS.begin(OMOTE_HOSTNAME)) {
       MDNS.addService("http", "tcp", 80);
@@ -425,6 +431,7 @@ void webserver_handleClient_HAL() {
     }
     mdnsStarted = true;
   }
+  #endif
 
   server.handleClient();
 
@@ -445,7 +452,11 @@ std::string webserver_getAddress_HAL() {
   if (!WiFi.isConnected()) {
     return "";
   }
+  #if (ENABLE_MDNS == 1)
   return std::string(OMOTE_HOSTNAME ".local / ") + WiFi.localIP().toString().c_str();
+  #else
+  return std::string(WiFi.localIP().toString().c_str());
+  #endif
 }
 
 #endif
