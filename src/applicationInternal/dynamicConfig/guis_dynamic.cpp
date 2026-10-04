@@ -6,10 +6,11 @@
  * It performs the following:
  *  - Reads the master guis.json file (from the config storage) which contains
  *    a list of GUIs (each with "name" and "guiname").
- *  - For each GUI, loads the individual JSON file (named "gui_[guiname].json")
- *    which defines a list of widgets, and keeps a compact parsed copy in RAM.
- *    Tabs are created and deleted every time the user swipes, so reading and
- *    parsing the file there made every swipe slow.
+ *  - Only the GUI names are kept in RAM. The individual JSON file ("gui_[guiname].json")
+ *    that defines the widgets is parsed when its tab is created, and the parsed copy is
+ *    dropped again as soon as the GUI is no longer one of the previous/current/next tabs
+ *    (see dynamic_guis_trimCache()). Slider and switch positions of dropped GUIs are
+ *    kept in a few bytes so they survive.
  *  - Creates the widgets in a 12-unit grid layout (using x, y, w, h from the JSON)
  *    and attaches an event callback that calls executeCommand.
  *
@@ -76,11 +77,17 @@ struct DynamicGui {
   std::vector<lv_coord_t> rowDsc; // LVGL keeps a pointer to this, so it has to live as long as the GUI
 };
 
+// Cache of parsed GUIs, only the ones that currently have a tab (previous, current, next).
 // key: registered (display) name. std::map keeps the addresses of its elements stable,
 // so widgets can be handed to LVGL as event user data.
 static std::map<std::string, DynamicGui> dynamicGuis;
+// key: registered (display) name, value: internal guiname from guis.json (the file is "gui_<guiname>.json")
+static std::map<std::string, std::string> guiFileNames;
 // key: internal guiname from guis.json, value: registered (display) name
 static std::map<std::string, std::string> guiDisplayNames;
+// Slider/switch values of GUIs that were dropped from the cache. Only stored for GUIs whose
+// values were changed, one int16 per slider/switch in file order.
+static std::map<std::string, std::vector<int16_t>> savedValues;
 
 std::string dynamicGuiDisplayName(const std::string& guiname) {
   auto it = guiDisplayNames.find(guiname);
@@ -182,16 +189,78 @@ static void create_widget(lv_obj_t* parent, DynamicWidget& widget) {
 }
 
 // ---------------------------------------------------------------------------
+// Cache handling
+// ---------------------------------------------------------------------------
+static void load_gui_definition(const std::string& filePath, DynamicGui& gui);
+
+static bool widgetHoldsValue(const DynamicWidget& w) { return w.type == WIDGET_SLIDER || w.type == WIDGET_SWITCH; }
+static int16_t defaultValue(const DynamicWidget& w) { return (w.type == WIDGET_SLIDER) ? 50 : 0; }
+
+static DynamicGui* get_dynamic_gui(const std::string& name) {
+  auto cached = dynamicGuis.find(name);
+  if (cached != dynamicGuis.end()) {
+    return &cached->second;
+  }
+  auto file = guiFileNames.find(name);
+  if (file == guiFileNames.end()) {
+    return NULL;
+  }
+
+  DynamicGui& gui = dynamicGuis[name];
+  load_gui_definition("gui_" + file->second + ".json", gui);
+
+  auto saved = savedValues.find(name);
+  if (saved != savedValues.end()) {
+    size_t i = 0;
+    for (DynamicWidget& w : gui.widgets) {
+      if (!widgetHoldsValue(w)) continue;
+      if (i < saved->second.size()) {
+        w.value = saved->second[i];
+        w.sentValue = w.value;
+      }
+      i++;
+    }
+    savedValues.erase(saved);
+  }
+  omote_log_d("Loaded GUI '%s' (%u widgets), %u GUIs cached\r\n", name.c_str(), gui.widgets.size(), dynamicGuis.size());
+  return &gui;
+}
+
+void dynamic_guis_trimCache() {
+  for (auto it = dynamicGuis.begin(); it != dynamicGuis.end();) {
+    if (gui_memoryOptimizer_isGUInameInMemory(it->first)) {
+      ++it;
+      continue;
+    }
+
+    bool changed = false;
+    std::vector<int16_t> values;
+    for (const DynamicWidget& w : it->second.widgets) {
+      if (!widgetHoldsValue(w)) continue;
+      values.push_back(w.value);
+      changed = changed || (w.value != defaultValue(w));
+    }
+    if (changed) {
+      savedValues[it->first] = std::move(values);
+    } else {
+      savedValues.erase(it->first);
+    }
+    omote_log_d("Dropped GUI '%s' from the cache\r\n", it->first.c_str());
+    it = dynamicGuis.erase(it);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Create the content of a dynamic tab from the parsed GUI definition.
 // ---------------------------------------------------------------------------
 static void create_tab_content_dynamic(lv_obj_t* tab) {
   std::string guiName = getGuiNameByTab(tab);
-  auto it = dynamicGuis.find(guiName);
-  if (it == dynamicGuis.end()) {
+  DynamicGui* guiPtr = get_dynamic_gui(guiName);
+  if (guiPtr == NULL) {
     omote_log_e("Dynamic GUI '%s' not found\r\n", guiName.c_str());
     return;
   }
-  DynamicGui& gui = it->second;
+  DynamicGui& gui = *guiPtr;
 
   lv_obj_set_width(tab, SCR_WIDTH);
   lv_obj_set_layout(tab, LV_LAYOUT_GRID);
@@ -208,7 +277,7 @@ static void create_tab_content_dynamic(lv_obj_t* tab) {
   }
 }
 
-// Widgets only point to the parsed GUI definition, there is nothing to free.
+// The parsed definition stays cached until dynamic_guis_trimCache() finds it is not needed any more.
 static void notify_tab_before_delete_dynamic(void) {}
 
 // ---------------------------------------------------------------------------
@@ -299,11 +368,10 @@ void register_dynamic_guis() {
       continue;
     }
 
-    DynamicGui& gui = dynamicGuis[name];
-    load_gui_definition("gui_" + guiName + ".json", gui);
+    guiFileNames[name] = guiName;
     guiDisplayNames[guiName] = name;
 
     register_gui(name, create_tab_content_dynamic, notify_tab_before_delete_dynamic);
-    omote_log_i("Registered GUI '%s' with %u widgets\r\n", name.c_str(), gui.widgets.size());
+    omote_log_i("Registered GUI '%s' (loaded on demand)\r\n", name.c_str());
   }
 }

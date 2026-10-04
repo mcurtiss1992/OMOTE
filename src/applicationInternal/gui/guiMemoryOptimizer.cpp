@@ -5,6 +5,7 @@
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/scenes/sceneRegistry.h"
 #include "applicationInternal/omote_log.h"
+#include "applicationInternal/dynamicConfig/guis_dynamic.h"
 
 struct t_gui_on_tab {
   lv_obj_t* tab;
@@ -321,6 +322,9 @@ void doTabCreation_strategyMax3(lv_obj_t* tabview, t_gui_state *gui_state) {
     setActiveTab(gui_state->activeTabID, LV_ANIM_OFF);
     gui_memoryOptimizer_setActiveGUIname(nameOfNewActiveTab);
   }
+
+  // only the GUIs of these (up to) three tabs stay parsed in RAM
+  dynamic_guis_trimCache();
 }
 
 LV_IMG_DECLARE(gradientLeft);
