@@ -143,6 +143,14 @@ bool touchChipResponds(void) {
 bool lvgl_flush_async = false;
 
 // allocate lvgl buffers ----------------------------------------------------------------------------------
+// Each draw buffer holds 1/LVGL_DRAW_BUFFER_DIVIDER of the screen. A smaller buffer means more, smaller
+// transfers per full redraw, but saves internal RAM (there are two buffers).
+// Measured on rev3 (full redraw, free heap after boot): divider 10 = 41 ms, 30 KB / 15 = 55 ms, 40 KB /
+// 20 = 58 ms, 45 KB / 40 = 94 ms, 53 KB. Set it with -D LVGL_DRAW_BUFFER_DIVIDER=10 for the smoothest swipes.
+#ifndef LVGL_DRAW_BUFFER_DIVIDER
+#define LVGL_DRAW_BUFFER_DIVIDER 20
+#endif
+#define LVGL_DRAW_BUFFER_PIXELS (SCR_WIDTH * SCR_HEIGHT / LVGL_DRAW_BUFFER_DIVIDER)
 lv_disp_draw_buf_t draw_buf;
 void init_lvgl_buffer(void) {
   // Internal memory is asked for, because LVGL renders into this buffer pixel by pixel and that is
@@ -153,7 +161,7 @@ void init_lvgl_buffer(void) {
   // this buffer directly, but only if esp_ptr_dma_capable() says it may. If not, Arduino_GFX
   // silently copies the data into a buffer of its own instead - it still works, only slower, and
   // nobody would notice. So the requirement is written down here rather than assumed.
-  const size_t bufSize = sizeof(lv_color_t) * SCR_WIDTH * SCR_HEIGHT / 10;
+  const size_t bufSize = sizeof(lv_color_t) * LVGL_DRAW_BUFFER_PIXELS;
   #ifdef DISPLAY_DRIVER_CAN_FLUSH_ASYNC
   // The DMA sends directly out of these buffers, and it cannot read PSRAM. So ask for internal
   // memory explicitly: a plain malloc() of this size returns PSRAM on rev5 (measured: address
@@ -163,7 +171,7 @@ void init_lvgl_buffer(void) {
   lv_color_t * bufB = (lv_color_t *) heap_caps_malloc(bufSize, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
   if (bufA && bufB) {
     lvgl_flush_async = true; // this is the one case where the asynchronous flush may be used
-    lv_disp_draw_buf_init(&draw_buf, bufA, bufB, SCR_WIDTH * SCR_HEIGHT / 10);
+    lv_disp_draw_buf_init(&draw_buf, bufA, bufB, LVGL_DRAW_BUFFER_PIXELS);
   } else {
     // Without internal DMA capable memory the asynchronous transfer cannot work - a DMA cannot read
     // PSRAM, it would send nothing at all. And a second buffer is of no use without it. So fall back
@@ -174,7 +182,7 @@ void init_lvgl_buffer(void) {
     free(bufB);
     bufA = (lv_color_t *) malloc(bufSize);
     lvgl_flush_async = false;
-    lv_disp_draw_buf_init(&draw_buf, bufA, NULL, SCR_WIDTH * SCR_HEIGHT / 10);
+    lv_disp_draw_buf_init(&draw_buf, bufA, NULL, LVGL_DRAW_BUFFER_PIXELS);
   }
   #else
   // One buffer. Internal memory, because LVGL renders into this buffer pixel by pixel and that is
@@ -190,7 +198,7 @@ void init_lvgl_buffer(void) {
     bufA = (lv_color_t *) malloc(bufSize);
   }
   lvgl_flush_async = false; // with one buffer LVGL must not render while a transfer is running
-  lv_disp_draw_buf_init(&draw_buf, bufA, NULL, SCR_WIDTH * SCR_HEIGHT / 10);
+  lv_disp_draw_buf_init(&draw_buf, bufA, NULL, LVGL_DRAW_BUFFER_PIXELS);
   #endif
 
   // Report what LVGL ended up with. "asynchronous" is the only case in which the second buffer

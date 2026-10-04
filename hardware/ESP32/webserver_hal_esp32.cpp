@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <esp_attr.h>
 #include <esp_system.h>
+#include <lvgl.h>
 #include "webserver_hal_esp32.h"
 #include "configFiles_hal_esp32.h"
 #include "preferencesStorage_hal_esp32.h"
@@ -133,6 +134,13 @@ static void handleStatus() {
   doc["freeHeap"] = ESP.getFreeHeap();
   doc["minFreeHeap"] = ESP.getMinFreeHeap();
   doc["maxAllocHeap"] = ESP.getMaxAllocHeap();
+  #if (LV_MEM_CUSTOM == 0)
+  lv_mem_monitor_t lvMem;
+  lv_mem_monitor(&lvMem);
+  doc["lvglPoolTotal"] = lvMem.total_size;
+  doc["lvglPoolFree"] = lvMem.free_size;
+  doc["lvglPoolMaxUsed"] = lvMem.max_used;
+  #endif
   doc["fsTotal"] = SPIFFS.totalBytes();
   doc["fsUsed"] = SPIFFS.usedBytes();
   doc["maxFilenameLength"] = MAX_SPIFFS_PATH_LEN - 1;
