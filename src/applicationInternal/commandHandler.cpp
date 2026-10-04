@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include "applicationInternal/commandHandler.h"
+#include "applicationInternal/dynamicConfig/devices_dynamic.h"
 #include "applicationInternal/scenes/sceneHandler.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
@@ -252,7 +253,13 @@ void executeCommand(uint16_t command, std::string additionalPayload) {
       omote_log_d("command: will execute command '%u' with additionalPayload '%s'\r\n", command, additionalPayload.c_str());
       executeCommandWithData(command, commands.at(command), additionalPayload);
     } else {
-      omote_log_w("command: command '%u' not found\r\n", command);
+      commandData dynamicData;
+      if (getDynamicCommandData(command, dynamicData)) {
+        omote_log_d("command: will execute dynamic command '%u' with additionalPayload '%s'\r\n", command, additionalPayload.c_str());
+        executeCommandWithData(command, dynamicData, additionalPayload);
+      } else {
+        omote_log_w("command: command '%u' not found\r\n", command);
+      }
     }
   }
   catch (const std::out_of_range& oor) {

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include <ArduinoJson.h>
+#include "applicationInternal/commandHandler.h"
 
 /*
   Devices, scenes and GUIs can be defined in JSON files instead of in code, e.g. with the OMOTE Config app.
@@ -19,16 +20,6 @@
 // 0 cannot be used for this, because 0 is a valid command id.
 #define DYNAMIC_COMMAND_NOT_FOUND 0xFFFF
 
-// --- Command Table Structure ---
-struct CommandEntry {
-  char name[MAX_NAME_LEN]; // Command name (fixed size)
-  uint16_t value;          // Command value (unique ID, etc.)
-  bool inUse;              // True if the slot is occupied
-};
-
-// Preallocated table for command entries (defined in the .cpp file)
-extern CommandEntry commandTable[MAX_COMMANDS];
-
 // --- Function Prototypes ---
 
 /**
@@ -42,18 +33,7 @@ extern CommandEntry commandTable[MAX_COMMANDS];
 bool loadJsonFile(const std::string& filename, JsonDocument& doc);
 
 /**
- * @brief Computes the hash index for a given string using the DJB2 algorithm.
- *
- * @param str The input string.
- * @return The computed hash index modulo MAX_COMMANDS.
- */
-uint8_t hashIndex(const char* str);
-
-/**
- * @brief Registers a command into the fixed command table using linear probing.
- *
- * This function saves the command data into the preallocated table and calls your
- * register_command() function (provided in your command handler) based on the command type.
+ * @brief Registers a command in the packed command store and gives it a command id.
  *
  * @param name The command name.
  * @param commandType The type of command ("MQTT", "IR", "BLE").
@@ -74,9 +54,14 @@ void register_command_dynamic(const char* name, const char* commandType, const c
 bool register_dynamic_device(const char *deviceName);
 
 /**
- * @brief Clears the command table.
+ * @brief Looks up the data of a dynamic command by id, for executeCommand().
  *
- * This function resets all entries in the command table to a default state.
+ * @return false if the id does not belong to a dynamic command.
+ */
+bool getDynamicCommandData(uint16_t id, commandData& out);
+
+/**
+ * @brief Removes all dynamic commands.
  */
 void clearCommands();
 
