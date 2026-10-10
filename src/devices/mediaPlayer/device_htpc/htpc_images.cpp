@@ -23,8 +23,6 @@ static const size_t slotSize = headerSize + paletteSize + ((HTPC_POSTER_WIDTH + 
 static const int slotCount = 6;
 // the slots are only allocated if this much is left in one piece afterwards, otherwise tiles show their titles
 static const unsigned long minLargestBlockAfterSlots = 6 * 1024;
-// a download needs a temporary buffer of one poster
-static const unsigned long minFreeHeapForDownload = 10 * 1024;
 // the bridge creates posters on demand, so the first download of a new page can fail
 static const int maxDownloadAttempts = 3;
 static const unsigned long retryDelay_ms = 5000;
@@ -107,26 +105,22 @@ static int takeSlot() {
   return oldest;
 }
 
-// Checks the downloaded file, copies it into a slot and sets up the image descriptor
-static bool store(htpcImage& image, const std::string& url, const std::string& data) {
-  if (data.size() < headerSize + paletteSize) {return false;}
+// Checks the file downloaded into a slot and sets up the image descriptor
+static bool accept(htpcImage& image, int slot, size_t size) {
+  uint8_t* buffer = slots + slot * slotSize;
+  if (size < headerSize + paletteSize) {return false;}
   lv_img_header_t header;
-  memcpy(&header, data.data(), headerSize);
+  memcpy(&header, buffer, headerSize);
   size_t expectedSize = headerSize + paletteSize + ((header.w + 1) / 2) * header.h;
   if ((header.cf != LV_IMG_CF_INDEXED_4BIT) || (header.w == 0) || (header.w > HTPC_POSTER_WIDTH) || (header.h == 0) || (header.h > HTPC_POSTER_HEIGHT)
-      || (data.size() != expectedSize) || (expectedSize > slotSize)) {
-    omote_log_w("htpc: poster has an unexpected format (cf %d, %dx%d, %u bytes)\r\n", header.cf, header.w, header.h, (unsigned int)data.size());
+      || (size != expectedSize)) {
+    omote_log_w("htpc: poster has an unexpected format (cf %d, %dx%d, %u bytes)\r\n", header.cf, header.w, header.h, (unsigned int)size);
     return false;
   }
-  int slot = takeSlot();
-  if (slot < 0) {return false;}
-  uint8_t* buffer = slots + slot * slotSize;
-  memcpy(buffer, data.data(), data.size());
-  slotOwner[slot] = url;
   image.slot = slot;
   memset(&image.dsc, 0, sizeof(image.dsc));
   image.dsc.header = header;
-  image.dsc.data_size = data.size() - headerSize;
+  image.dsc.data_size = size - headerSize;
   image.dsc.data = buffer + headerSize;
   return true;
 }
@@ -168,27 +162,20 @@ bool htpc_images_loop() {
     if ((found == images.end()) || (found->second.slot >= 0)) {continue;} // forgotten or loaded in the meantime
     if (!allocateSlots()) {return false;}
 
-    unsigned long heapSize, freeHeap, maxAllocHeap, minFree;
-    get_heapUsage(&heapSize, &freeHeap, &maxAllocHeap, &minFree);
-    if ((heapSize > 0) && (freeHeap < minFreeHeapForDownload)) {
-      // try again later
-      downloadQueue.push_back(url);
-      return false;
-    }
-
     htpcImage& image = found->second;
     image.downloadAttempts++;
     image.lastAttempt = millis();
-    std::string data;
-    if (!httpDownload(url.c_str(), &data)) {
-      if (image.downloadAttempts >= maxDownloadAttempts) {image.failed = true;}
-      return false;
+    // download straight into a slot, no temporary copy on the heap
+    int slot = takeSlot();
+    if (slot < 0) {return false;}
+    size_t size = 0;
+    bool ok = httpDownload(url.c_str(), slots + slot * slotSize, slotSize, &size);
+    if (ok && accept(image, slot, size)) {
+      slotOwner[slot] = url;
+      return true;
     }
-    if (!store(image, url, data)) {
-      image.failed = true;
-      return false;
-    }
-    return true;
+    if (ok || (image.downloadAttempts >= maxDownloadAttempts)) {image.failed = true;}
+    return false;
   }
   return false;
 }

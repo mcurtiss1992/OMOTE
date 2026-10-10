@@ -292,10 +292,10 @@ bool httpGet_HAL(const char *url, std::string *body) {
   return false;
 }
 
-// GET for data like images. Unlike httpGet_HAL it reads Content-Length and reserves the body once,
-// and reads in chunks, so that downloading several images does not fragment the heap.
-bool httpDownload_HAL(const char *url, std::string *body) {
-  body->clear();
+// GET for data like images, straight into the caller's buffer: no temporary copy on the heap.
+// Needs a Content-Length that fits into the buffer.
+bool httpDownload_HAL(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size) {
+  *size = 0;
   if (!isWifiConnected) {return false;}
   std::string u(url);
   if (u.compare(0, 7, "http://") != 0) {return false;}
@@ -331,17 +331,15 @@ bool httpDownload_HAL(const char *url, std::string *body) {
       contentLength = atoi(line.c_str() + 15);
     }
   }
-  const size_t maxSize = 16 * 1024;
-  if ((contentLength == 0) || (contentLength > maxSize)) {
+  if ((contentLength == 0) || (contentLength > bufferSize)) {
     omote_log_w("HTTP download %s: unsupported size %u\r\n", url, (unsigned int)contentLength);
     client.stop();
     return false;
   }
-  body->resize(contentLength);
   size_t received = 0;
   unsigned long start = millis();
   while ((received < contentLength) && (millis() - start < 3000)) {
-    int n = client.read((uint8_t*)&(*body)[received], contentLength - received);
+    int n = client.read(buffer + received, contentLength - received);
     if (n > 0) {
       received += n;
     } else if (!client.connected() && !client.available()) {
@@ -351,11 +349,8 @@ bool httpDownload_HAL(const char *url, std::string *body) {
     }
   }
   client.stop();
-  if (received != contentLength) {
-    body->clear();
-    body->shrink_to_fit();
-    return false;
-  }
+  if (received != contentLength) {return false;}
+  *size = received;
   return true;
 }
 

@@ -153,7 +153,8 @@ bool publishMQTTMessage(const char *topic, const char *payload);
 // blocking HTTP GET with a short timeout, true if the server answered 2xx
 bool httpGet(const char *url, std::string *body = nullptr);
 // GET for data (e.g. images). Unlike httpGet it also downloads in the simulator.
-bool httpDownload(const char *url, std::string *body);
+// downloads into buffer (no temporary copy). False if it fails or does not fit, *size is the number of bytes.
+bool httpDownload(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size);
 void wifi_shutdown();
 #endif
 

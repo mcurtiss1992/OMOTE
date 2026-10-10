@@ -9,7 +9,7 @@ bool publishMQTTMessage_HAL(const char *topic, const char *payload);
 // body (optional) receives the response body, at most 4 KB
 bool httpGet_HAL(const char *url, std::string *body = nullptr);
 // GET for data (e.g. images). Unlike httpGet_HAL it also downloads in the simulator.
-bool httpDownload_HAL(const char *url, std::string *body);
+bool httpDownload_HAL(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size);
 void wifi_shutdown_HAL();
 
 typedef void (*tAnnounceWiFiconnected_cb)(bool connected);

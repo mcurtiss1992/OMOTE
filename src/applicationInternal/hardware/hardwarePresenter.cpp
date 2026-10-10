@@ -308,8 +308,8 @@ bool publishMQTTMessage(const char *topic, const char *payload) {
 bool httpGet(const char *url, std::string *body) {
   return httpGet_HAL(url, body);
 }
-bool httpDownload(const char *url, std::string *body) {
-  return httpDownload_HAL(url, body);
+bool httpDownload(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size) {
+  return httpDownload_HAL(url, buffer, bufferSize, size);
 }
 void wifi_shutdown() {
   wifi_shutdown_HAL();

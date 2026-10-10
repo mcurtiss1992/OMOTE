@@ -239,7 +239,7 @@ bool httpGet_HAL(const char *url, std::string *body) {
 }
 
 // minimal HTTP/1.0 client for downloading data, only http://host[:port]/path is supported
-bool httpDownload_HAL(const char *url, std::string *body) {
+static bool httpDownloadString(const char *url, std::string *body) {
   body->clear();
   std::string u(url);
   if (u.compare(0, 7, "http://") != 0) {return false;}
@@ -293,6 +293,15 @@ bool httpDownload_HAL(const char *url, std::string *body) {
     return false;
   }
   body->assign(response, headerEnd + 4, std::string::npos);
+  return true;
+}
+
+bool httpDownload_HAL(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size) {
+  *size = 0;
+  std::string body;
+  if (!httpDownloadString(url, &body) || body.empty() || (body.size() > bufferSize)) {return false;}
+  memcpy(buffer, body.data(), body.size());
+  *size = body.size();
   return true;
 }
 
