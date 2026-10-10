@@ -305,6 +305,9 @@ bool publishMQTTMessage(const char *topic, const char *payload) {
 bool httpGet(const char *url, std::string *body) {
   return httpGet_HAL(url, body);
 }
+bool httpDownload(const char *url, std::string *body) {
+  return httpDownload_HAL(url, body);
+}
 void wifi_shutdown() {
   wifi_shutdown_HAL();
 }

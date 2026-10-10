@@ -152,6 +152,8 @@ void mqtt_loop();
 bool publishMQTTMessage(const char *topic, const char *payload);
 // blocking HTTP GET with a short timeout, true if the server answered 2xx
 bool httpGet(const char *url, std::string *body = nullptr);
+// GET for data (e.g. images). Unlike httpGet it also downloads in the simulator.
+bool httpDownload(const char *url, std::string *body);
 void wifi_shutdown();
 #endif
 

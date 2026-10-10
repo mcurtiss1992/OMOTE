@@ -15,6 +15,8 @@
 // register gui and keys
 #include "applicationInternal/gui/guiBase.h"
 #include "applicationInternal/gui/guiRegistry.h"
+#include "devices/mediaPlayer/device_htpc/device_htpc.h"
+#include "devices/mediaPlayer/device_htpc/gui_htpc.h"
 #include "guis/gui_sceneSelection.h"
 #include "guis/gui_irReceiver.h"
 #include "guis/gui_settings.h"
@@ -72,11 +74,15 @@ int main(int argc, char *argv[]) {
   #endif
   register_keyboardCommands();
 
+  #if (ENABLE_WIFI_AND_MQTT == 1)
+  register_device_htpc();
+  #endif
   // devices from the config files. After the keyboard, because BLE commands refer to the BLE keyboard keys.
   register_dynamic_devices();
 
   // Register the GUIs. They will be displayed in the order they have been registered.
   register_gui_sceneSelection();
+  register_gui_htpc();
   register_gui_irReceiver();
   register_gui_settings();
   #if (ENABLE_KEYBOARD_BLE == 1)
@@ -86,7 +92,7 @@ int main(int argc, char *argv[]) {
   // Only show these GUIs in the main gui list. If you don't set this explicitely, by default all registered guis are shown.
   #if (USE_SCENE_SPECIFIC_GUI_LIST != 0)
   main_gui_list =
-    {tabName_sceneSelection, tabName_settings, tabName_irReceiver
+    {tabName_sceneSelection, tabName_htpc, tabName_settings, tabName_irReceiver
     };
   #if (ENABLE_KEYBOARD_BLE == 1)
   if (bleOn) main_gui_list.push_back(tabName_blepairing);

@@ -96,6 +96,11 @@ std::string subscribeTopicOMOTE_BLEprintConnectedClients         = "OMOTE/BLE/pr
 std::string subscribeTopicOMOTE_BLEdisconnectAllClients          = "OMOTE/BLE/disconnectAllClients";
 std::string subscribeTopicOMOTE_BLEprintBonds                    = "OMOTE/BLE/printBonds";
 std::string subscribeTopicOMOTE_BLEdeleteBonds                   = "OMOTE/BLE/deleteBonds";
+// htpc bridge, forwarded to the commandHandler
+std::string subscribeTopicHTPC_tiles                             = "htpc/movies/tiles";
+std::string subscribeTopicHTPC_page                              = "htpc/movies/page";
+std::string subscribeTopicHTPC_playerState                       = "htpc/player/state";
+std::string subscribeTopicHTPC_bridgeOnline                      = "htpc/bridge/online";
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
@@ -166,6 +171,10 @@ void mqtt_subscribeTopics() {
   mqttClient.subscribe(subscribeTopicOMOTE_BLEdisconnectAllClients.c_str());
   mqttClient.subscribe(subscribeTopicOMOTE_BLEprintBonds.c_str());
   mqttClient.subscribe(subscribeTopicOMOTE_BLEdeleteBonds.c_str());
+  mqttClient.subscribe(subscribeTopicHTPC_tiles.c_str());
+  mqttClient.subscribe(subscribeTopicHTPC_page.c_str());
+  mqttClient.subscribe(subscribeTopicHTPC_playerState.c_str());
+  mqttClient.subscribe(subscribeTopicHTPC_bridgeOnline.c_str());
   omote_log_i("  Successfully subscribed to MQTT topics\r\n");
 
 }
@@ -180,7 +189,7 @@ bool checkMQTTconnection() {
       return false;
     } else {
       // try to connect to mqtt server
-      mqttClient.setBufferSize(512);   // default is 256
+      mqttClient.setBufferSize(1536);  // default is 256. htpc/movies/page with 6 movies is about 1 kB
       //mqttClient.setKeepAlive(15);     // default is 15   Client will send MQTTPINGREQ to keep connection alive
       //mqttClient.setSocketTimeout(15); // default is 15   This determines how long the client will wait for incoming data when it expects data to arrive - for example, whilst it is in the middle of reading an MQTT packet.
       mqttClient.setServer(MQTT_SERVER, MQTT_SERVER_PORT); // MQTT initialization
@@ -279,6 +288,10 @@ bool httpGet_HAL(const char *url, std::string *body) {
   }
   omote_log_e("HTTP GET %s failed: '%s'\r\n", url, status.c_str());
   return false;
+}
+
+bool httpDownload_HAL(const char *url, std::string *body) {
+  return httpGet_HAL(url, body);
 }
 
 bool publishMQTTMessage_HAL(const char *topic, const char *payload){

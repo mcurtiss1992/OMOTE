@@ -65,6 +65,11 @@ std::string subscribeTopicOMOTE_BLEprintConnectedClients         = "OMOTE/BLE/pr
 std::string subscribeTopicOMOTE_BLEdisconnectAllClients          = "OMOTE/BLE/disconnectAllClients";
 std::string subscribeTopicOMOTE_BLEprintBonds                    = "OMOTE/BLE/printBonds";
 std::string subscribeTopicOMOTE_BLEdeleteBonds                   = "OMOTE/BLE/deleteBonds";
+// htpc bridge, forwarded to the commandHandler
+std::string subscribeTopicHTPC_tiles                             = "htpc/movies/tiles";
+std::string subscribeTopicHTPC_page                              = "htpc/movies/page";
+std::string subscribeTopicHTPC_playerState                       = "htpc/player/state";
+std::string subscribeTopicHTPC_bridgeOnline                      = "htpc/bridge/online";
 
 void publish_callback(void** state, struct mqtt_response_publish *publish) {
     **(int**)state += 1;
@@ -101,6 +106,10 @@ void mqtt_subscribeTopics() {
   mqtt_subscribe(&mqttClient, subscribeTopicOMOTE_BLEdisconnectAllClients.c_str(), 2);
   mqtt_subscribe(&mqttClient, subscribeTopicOMOTE_BLEprintBonds.c_str(), 2);
   mqtt_subscribe(&mqttClient, subscribeTopicOMOTE_BLEdeleteBonds.c_str(), 2);
+  mqtt_subscribe(&mqttClient, subscribeTopicHTPC_tiles.c_str(), 0);
+  mqtt_subscribe(&mqttClient, subscribeTopicHTPC_page.c_str(), 0);
+  mqtt_subscribe(&mqttClient, subscribeTopicHTPC_playerState.c_str(), 0);
+  mqtt_subscribe(&mqttClient, subscribeTopicHTPC_bridgeOnline.c_str(), 0);
 
 }
 
@@ -224,6 +233,64 @@ bool httpGet_HAL(const char *url, std::string *body) {
   // the simulator does not talk to devices, only the emulator service in the config stack does
   printf("HTTP: GET %s (not sent by the simulator)\r\n", url);
   if (body != nullptr) body->clear();
+  return true;
+}
+
+// minimal HTTP/1.0 client for downloading data, only http://host[:port]/path is supported
+bool httpDownload_HAL(const char *url, std::string *body) {
+  body->clear();
+  std::string u(url);
+  if (u.compare(0, 7, "http://") != 0) {return false;}
+  u.erase(0, 7);
+  size_t slash = u.find('/');
+  std::string hostPort = u.substr(0, slash);
+  std::string path = (slash == std::string::npos) ? "/" : u.substr(slash);
+  std::string host = hostPort;
+  std::string port = "80";
+  size_t colon = hostPort.find(':');
+  if (colon != std::string::npos) {
+    host = hostPort.substr(0, colon);
+    port = hostPort.substr(colon + 1);
+  }
+
+  struct addrinfo hints = {};
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  struct addrinfo* result = NULL;
+  if (getaddrinfo(host.c_str(), port.c_str(), &hints, &result) != 0) {return false;}
+  int sock = -1;
+  for (struct addrinfo* p = result; p != NULL; p = p->ai_next) {
+    sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (sock == -1) {continue;}
+    #if !defined(WIN32)
+    struct timeval timeout = {2, 0};
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    #endif
+    if (connect(sock, p->ai_addr, p->ai_addrlen) == 0) {break;}
+    close(sock);
+    sock = -1;
+  }
+  freeaddrinfo(result);
+  if (sock == -1) {return false;}
+
+  std::string request = "GET " + path + " HTTP/1.0\r\nHost: " + hostPort + "\r\nConnection: close\r\n\r\n";
+  send(sock, request.c_str(), request.size(), 0);
+  std::string response;
+  char buffer[2048];
+  int n;
+  while ((n = recv(sock, buffer, sizeof(buffer), 0)) > 0) {
+    response.append(buffer, n);
+    if (response.size() > 64 * 1024) {break;}
+  }
+  close(sock);
+
+  size_t headerEnd = response.find("\r\n\r\n");
+  size_t firstLineEnd = response.find("\r\n");
+  if ((headerEnd == std::string::npos) || (response.substr(0, firstLineEnd).find(" 200") == std::string::npos)) {
+    printf("HTTP: GET %s failed\r\n", url);
+    return false;
+  }
+  body->assign(response, headerEnd + 4, std::string::npos);
   return true;
 }
 
