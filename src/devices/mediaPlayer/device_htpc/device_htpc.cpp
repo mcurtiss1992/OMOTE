@@ -35,6 +35,8 @@ struct htpcCachedPage {
 static htpcCachedPage nextPage;
 static htpcCachedPage previousPage;
 static int prefetchOffset = -1;
+static htpcQuery query;
+static std::vector<htpcGenre> genres;
 static htpcPlayerState playerState;
 // assume online until the bridge tells otherwise, so that we don't show "offline" before the retained message arrived
 static bool bridgeOnline = true;
@@ -79,7 +81,18 @@ bool htpc_hasNextPage() {
 }
 
 static void publishGetTiles(int offset) {
-  std::string payload = "{\"action\":\"get_tiles\",\"offset\":" + std::to_string(offset) + ",\"count\":" + std::to_string(HTPC_TILES_PER_PAGE) + "}";
+  JsonDocument doc;
+  doc["action"] = "get_tiles";
+  doc["offset"] = offset;
+  doc["count"] = HTPC_TILES_PER_PAGE;
+  if (!query.isDefault()) {
+    doc["sort"] = query.sort;
+    if (!query.genre.empty()) {doc["genre"] = query.genre;}
+    if (query.maxMinutes > 0) {doc["maxMinutes"] = query.maxMinutes;}
+    if (query.sort == "random") {doc["seed"] = query.seed;}
+  }
+  std::string payload;
+  serializeJson(doc, payload);
   publishMQTTMessage(HTPC_TOPIC_CMD, payload.c_str());
 }
 
@@ -122,6 +135,39 @@ int htpc_getTotal() {
   return total;
 }
 
+const htpcQuery& htpc_getQuery() {
+  return query;
+}
+
+const std::vector<htpcGenre>& htpc_getGenres() {
+  return genres;
+}
+
+static void pruneImages();
+
+void htpc_setQuery(const htpcQuery& newQuery) {
+  if (newQuery == query) {return;}
+  query = newQuery;
+  // start again at the first page, nothing cached belongs to the new list
+  pageOffset = 0;
+  total = -1;
+  requestedOffset = -1;
+  prefetchOffset = -1;
+  nextPage.offset = -1;
+  nextPage.tiles.clear();
+  previousPage.offset = -1;
+  previousPage.tiles.clear();
+  if (query.isDefault()) {
+    tiles = firstPage;
+    prefetchNextPage();
+  } else {
+    tiles.clear();
+    requestPage(0);
+  }
+  htpc_gui_update();
+  pruneImages();
+}
+
 bool htpc_nextPage() {
   // while a page is still being loaded (e.g. a key is held), go on from the page that was asked for
   if (requestedOffset > pageOffset) {
@@ -151,7 +197,7 @@ bool htpc_previousPage() {
   if ((requestedOffset >= 0) && (requestedOffset < pageOffset)) {
     int offset = requestedOffset - HTPC_TILES_PER_PAGE;
     if (offset < 0) {return false;}
-    if (offset == 0) {
+    if ((offset == 0) && query.isDefault()) {
       requestedOffset = -1;
       pageOffset = 0;
       tiles = firstPage;
@@ -164,9 +210,10 @@ bool htpc_previousPage() {
   if (pageOffset == 0) {return false;}
   int offset = pageOffset - HTPC_TILES_PER_PAGE;
   if (offset < 0) {offset = 0;}
-  if ((offset == 0) || (previousPage.offset == offset)) {
-    // the first page is always known from the retained topic, the one before was kept
-    std::vector<htpcTile> items = (offset == 0) ? firstPage : previousPage.tiles;
+  bool fromRetained = (offset == 0) && query.isDefault();
+  if (fromRetained || (previousPage.offset == offset)) {
+    // the first page of the default list is known from the retained topic, the one before was kept
+    std::vector<htpcTile> items = fromRetained ? firstPage : previousPage.tiles;
     // the page we leave is the next one now
     nextPage.offset = pageOffset;
     nextPage.tiles = tiles;
@@ -223,7 +270,7 @@ static bool parseFirstPage(const std::string& payload) {
     return false;
   }
   firstPage = parseTileArray(doc.as<JsonArray>());
-  if (pageOffset == 0) {
+  if ((pageOffset == 0) && query.isDefault()) {
     tiles = firstPage;
     // the list changed, preload again
     nextPage.offset = -1;
@@ -241,7 +288,15 @@ static bool parsePage(const std::string& payload) {
     return false;
   }
   int offset = doc["offset"] | -1;
-  if (offset <= 0) {return false;}
+  // the first page of the default list comes from the retained topic
+  if ((offset < 0) || ((offset == 0) && query.isDefault())) {return false;}
+  // only pages of the current sort/filter
+  htpcQuery reply;
+  reply.sort = doc["sort"] | "added";
+  reply.genre = doc["genre"] | "";
+  reply.maxMinutes = doc["maxMinutes"] | 0;
+  reply.seed = doc["seed"] | 0;
+  if (!(reply == query)) {return false;}
   bool requested = (offset == requestedOffset);
   bool prefetched = (offset == prefetchOffset);
   if (!requested && !prefetched) {return false;} // not a page we asked for
@@ -323,6 +378,18 @@ bool htpc_handleMQTTmessage(const std::string& topic, const std::string& payload
       htpc_gui_playingChanged(playerState.playing);
     }
     pruneImages();
+    return true;
+  } else if (topic == HTPC_TOPIC_GENRES) {
+    JsonDocument doc;
+    if (!deserializeJson(doc, payload)) {
+      genres.clear();
+      for (JsonObject genre : doc.as<JsonArray>()) {
+        htpcGenre aGenre;
+        aGenre.name = genre["name"] | "";
+        aGenre.count = genre["count"] | 0;
+        if (!aGenre.name.empty()) {genres.push_back(aGenre);}
+      }
+    }
     return true;
   } else if (topic == HTPC_TOPIC_BRIDGE) {
     bridgeOnline = (payload == "1");

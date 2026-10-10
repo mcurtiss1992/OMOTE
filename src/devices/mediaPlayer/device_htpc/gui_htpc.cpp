@@ -19,6 +19,7 @@ uint16_t GUI_HTPC_ACTIVATE;
 // channel keys page through the movies, holding them pages quickly
 uint16_t HTPC_PAGE_NEXT;
 uint16_t HTPC_PAGE_PREVIOUS;
+uint16_t HTPC_OPTIONS;
 
 std::map<char, repeatModes> key_repeatModes_htpc = {};
 std::map<char, uint16_t> key_commands_short_htpc = {};
@@ -54,9 +55,14 @@ static const lv_coord_t buttonHeight = 36;
 // running out of memory, which LVGL does not survive.
 static const uint32_t minLvglFreeForView = 6 * 1024;
 
-enum htpcView {VIEW_NONE, VIEW_TILES, VIEW_NOW_PLAYING};
+enum htpcView {VIEW_NONE, VIEW_TILES, VIEW_NOW_PLAYING, VIEW_OPTIONS};
 // true: the user wants the now playing view (it is only shown while something is playing)
 static bool showNowPlaying = false;
+// true: sort and filter options are shown instead of the movies
+static bool showOptions = false;
+// the pill with the position, tapping it opens the options. In screen coordinates, empty if not shown.
+static lv_area_t pillArea = {0, 0, -1, -1};
+static void scheduleUpdate();
 static htpcView currentView = VIEW_NONE;
 static bool notEnoughMemory = false;
 // last brightness sent, there is no feedback from the lights
@@ -213,6 +219,22 @@ static void moveArea(lv_area_t* area, const lv_area_t* by) {
   area->y2 += by->y1;
 }
 
+// short description of a sort/filter, empty for the default list
+static std::string queryLabel(const htpcQuery& query) {
+  std::string label;
+  auto add = [&label](const std::string& part) {
+    if (!label.empty()) {label += ", ";}
+    label += part;
+  };
+  if (query.sort == "title") {add("A-Z");}
+  else if (query.sort == "released") {add("Year");}
+  else if (query.sort == "random") {add("Random");}
+  if (!query.genre.empty()) {add(query.genre);}
+  if (query.maxMinutes == 90) {add("<90m");}
+  else if (query.maxMinutes > 0) {add("<" + std::to_string(query.maxMinutes / 60) + "h");}
+  return label;
+}
+
 static void drawPeekBlock(lv_draw_ctx_t* draw_ctx, const lv_area_t* area, int colorIndex) {
   lv_draw_rect_dsc_t rect;
   lv_draw_rect_dsc_init(&rect);
@@ -302,19 +324,28 @@ static void tiles_draw_event_cb(lv_event_t* e) {
     }
   }
 
-  // position in the list, e.g. "13-18 of 312", in a pill at the bottom over the peek row
-  if (!tiles.empty() && ((htpc_getPageOffset() > 0) || htpc_hasNextPage())) {
-    char position[32];
+  // position in the list and the active sort/filter, e.g. "13-18 of 312  A-Z, Horror", in a pill at the bottom
+  // over the peek row. Tapping it opens the sort and filter options.
+  pillArea.x2 = pillArea.x1 - 1;
+  const htpcQuery& query = htpc_getQuery();
+  if (!tiles.empty() || !query.isDefault()) {
+    char position[64];
     int first = htpc_getPageOffset() + 1;
     int last = htpc_getPageOffset() + (int)tiles.size();
-    if (htpc_getTotal() > 0) {
+    if (tiles.empty()) {
+      snprintf(position, sizeof(position), "%s", "0 movies");
+    } else if (htpc_getTotal() > 0) {
       snprintf(position, sizeof(position), "%d-%d of %d", first, last, htpc_getTotal());
     } else {
       snprintf(position, sizeof(position), "%d-%d", first, last);
     }
+    std::string text = std::string(position) + "  " + LV_SYMBOL_LIST;
+    std::string summary = queryLabel(query);
+    if (!summary.empty()) {text = std::string(position) + "  " + summary;}
     label.font = &lv_font_montserrat_12;
     lv_point_t size;
-    lv_txt_get_size(&size, position, label.font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    lv_txt_get_size(&size, text.c_str(), label.font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (size.x > lv_area_get_width(&coords) - 16) {size.x = lv_area_get_width(&coords) - 16;}
     lv_area_t pill;
     pill.x1 = coords.x1 + (lv_area_get_width(&coords) - size.x) / 2 - 8;
     pill.x2 = pill.x1 + size.x + 16 - 1;
@@ -326,7 +357,10 @@ static void tiles_draw_event_cb(lv_event_t* e) {
     lv_draw_rect(draw_ctx, &rect, &pill);
     lv_area_t positionArea = pill;
     positionArea.y1 += 2;
-    lv_draw_label(draw_ctx, &label, &positionArea, position, NULL);
+    lv_draw_label(draw_ctx, &label, &positionArea, text.c_str(), NULL);
+    pillArea = pill;
+    // easier to hit
+    lv_area_increase(&pillArea, 4, 6);
   }
 
   draw_ctx->clip_area = clipOriginal;
@@ -361,6 +395,14 @@ static void tiles_input_event_cb(lv_event_t* e) {
     // LVGL still sends CLICKED after a swipe. Never start a movie because of a swipe.
     lv_indev_t* indev = lv_indev_get_act();
     if ((indev != NULL) && (lv_indev_get_gesture_dir(indev) != LV_DIR_NONE)) {return;}
+    if (indev == NULL) {return;}
+    lv_point_t point;
+    lv_indev_get_point(indev, &point);
+    if ((pillArea.x2 >= pillArea.x1) && _lv_area_is_point_on(&pillArea, &point, 0)) {
+      showOptions = true;
+      scheduleUpdate();
+      return;
+    }
     int index = tileAtPoint();
     if (index >= 0) {htpc_playTile(index);}
   }
@@ -580,13 +622,182 @@ static void updateNowPlayingView() {
   lv_obj_invalidate(controlsObj);
 }
 
+// --- options view: sort and filter ------------------------------------------------
+// Sort and length are chips drawn by one widget, the genre is an LVGL dropdown (the list can be long).
+// The choice is applied with "Done".
+static lv_obj_t* optionsObj = NULL;
+static lv_obj_t* genreDropdown = NULL;
+static htpcQuery draftQuery;
+static const int sortChips = 4;
+static const char* sortNames[sortChips]  = {"added", "title", "released", "random"};
+static const char* sortLabels[sortChips] = {"Added", "A-Z", "Year", "Random"};
+static const int lengthChips = 5;
+static const int lengthMinutes[lengthChips] = {0, 90, 120, 180, 240};
+static const char* lengthLabels[lengthChips] = {"Any", "<90m", "<2h", "<3h", "<4h"};
+static const lv_coord_t chipHeight = 30;
+static const lv_coord_t optSortY = 18;
+static const lv_coord_t optLengthY = optSortY + chipHeight + 24;
+static const lv_coord_t optGenreY = optLengthY + chipHeight + 24;
+static const lv_coord_t optButtonsY = optGenreY + 36 + 14;
+static int pressedChip = -1;  // 0..3 sort, 10..14 length, 20 cancel, 21 done
+
+static void chipArea(int chip, const lv_area_t* coords, lv_area_t* area) {
+  lv_coord_t width = lv_area_get_width(coords);
+  int count, index;
+  lv_coord_t y;
+  if (chip < 10)      {count = sortChips;   index = chip;      y = optSortY;}
+  else if (chip < 20) {count = lengthChips; index = chip - 10; y = optLengthY;}
+  else                {count = 2;           index = chip - 20; y = optButtonsY;}
+  lv_coord_t gap = 4;
+  lv_coord_t w = (width - (count - 1) * gap) / count;
+  area->x1 = coords->x1 + index * (w + gap);
+  area->x2 = area->x1 + w - 1;
+  area->y1 = coords->y1 + y;
+  area->y2 = area->y1 + ((chip >= 20) ? buttonHeight : chipHeight) - 1;
+}
+
+static bool chipSelected(int chip) {
+  if (chip < 10) {return draftQuery.sort == sortNames[chip];}
+  if (chip < 20) {return draftQuery.maxMinutes == lengthMinutes[chip - 10];}
+  return chip == 21;
+}
+
+static const char* chipText(int chip) {
+  if (chip < 10) {return sortLabels[chip];}
+  if (chip < 20) {return lengthLabels[chip - 10];}
+  return (chip == 20) ? "Cancel" : "Done";
+}
+
+static const int allChips[] = {0, 1, 2, 3, 10, 11, 12, 13, 14, 20, 21};
+
+static void options_draw_event_cb(lv_event_t* e) {
+  lv_draw_ctx_t* draw_ctx = lv_event_get_draw_ctx(e);
+  lv_area_t coords;
+  lv_obj_get_coords(optionsObj, &coords);
+  lv_draw_label_dsc_t label;
+  lv_draw_label_dsc_init(&label);
+  label.color = lv_color_white();
+  label.font = &lv_font_montserrat_12;
+  static const char* headings[3] = {"Sort", "Length", "Genre"};
+  static const lv_coord_t headingY[3] = {optSortY, optLengthY, optGenreY};
+  for (int i=0; i<3; i++) {
+    lv_area_t area = {coords.x1, (lv_coord_t)(coords.y1 + headingY[i] - 16), coords.x2, (lv_coord_t)(coords.y1 + headingY[i] - 2)};
+    lv_draw_label(draw_ctx, &label, &area, headings[i], NULL);
+  }
+  lv_draw_rect_dsc_t rect;
+  lv_draw_rect_dsc_init(&rect);
+  rect.radius = 8;
+  label.align = LV_TEXT_ALIGN_CENTER;
+  // one line, never wrap
+  label.flag = LV_TEXT_FLAG_EXPAND;
+  for (int chip : allChips) {
+    lv_area_t area;
+    chipArea(chip, &coords, &area);
+    lv_color_t color = chipSelected(chip) ? lv_palette_main(LV_PALETTE_BLUE) : color_primary;
+    rect.bg_color = (chip == pressedChip) ? lv_color_lighten(color, 60) : color;
+    lv_draw_rect(draw_ctx, &rect, &area);
+    lv_point_t size;
+    lv_txt_get_size(&size, chipText(chip), label.font, 0, 0, lv_area_get_width(&area), LV_TEXT_FLAG_EXPAND);
+    lv_area_t textArea = area;
+    textArea.y1 += (lv_area_get_height(&area) - size.y) / 2;
+    lv_draw_label(draw_ctx, &label, &textArea, chipText(chip), NULL);
+  }
+}
+
+static int chipAtPoint() {
+  lv_indev_t* indev = lv_indev_get_act();
+  if (indev == NULL) {return -1;}
+  lv_point_t point;
+  lv_indev_get_point(indev, &point);
+  lv_area_t coords;
+  lv_obj_get_coords(optionsObj, &coords);
+  for (int chip : allChips) {
+    lv_area_t area;
+    chipArea(chip, &coords, &area);
+    if (_lv_area_is_point_on(&area, &point, 0)) {return chip;}
+  }
+  return -1;
+}
+
+static void closeOptions(bool apply) {
+  showOptions = false;
+  if (apply) {
+    // the new list is requested by the device, the GUI is updated when it arrives
+    htpc_setQuery(draftQuery);
+  }
+  scheduleUpdate();
+}
+
+static void options_input_event_cb(lv_event_t* e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  if (code == LV_EVENT_PRESSED) {
+    pressedChip = chipAtPoint();
+    lv_obj_invalidate(optionsObj);
+  } else if ((code == LV_EVENT_RELEASED) || (code == LV_EVENT_PRESS_LOST)) {
+    pressedChip = -1;
+    lv_obj_invalidate(optionsObj);
+  } else if (code == LV_EVENT_CLICKED) {
+    lv_indev_t* indev = lv_indev_get_act();
+    if ((indev != NULL) && (lv_indev_get_gesture_dir(indev) != LV_DIR_NONE)) {return;}
+    int chip = chipAtPoint();
+    if (chip < 0) {return;}
+    if (chip < 10) {
+      draftQuery.sort = sortNames[chip];
+      // every tap on "Random" shuffles again
+      if (draftQuery.sort == "random") {draftQuery.seed = (uint32_t)rand();}
+    } else if (chip < 20) {
+      draftQuery.maxMinutes = lengthMinutes[chip - 10];
+    } else {
+      closeOptions(chip == 21);
+      return;
+    }
+    lv_obj_invalidate(optionsObj);
+  }
+}
+
+static void genre_event_cb(lv_event_t* e) {
+  uint16_t selected = lv_dropdown_get_selected(genreDropdown);
+  const std::vector<htpcGenre>& genres = htpc_getGenres();
+  draftQuery.genre = ((selected > 0) && (selected <= genres.size())) ? genres[selected - 1].name : "";
+}
+
+static void buildOptionsView() {
+  draftQuery = htpc_getQuery();
+
+  optionsObj = lv_obj_create(viewBox);
+  lv_obj_remove_style_all(optionsObj);
+  lv_obj_set_pos(optionsObj, 0, 0);
+  lv_obj_set_size(optionsObj, tabContentWidth, optButtonsY + buttonHeight);
+  lv_obj_clear_flag(optionsObj, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(optionsObj, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(optionsObj, options_draw_event_cb, LV_EVENT_DRAW_MAIN, NULL);
+  lv_obj_add_event_cb(optionsObj, options_input_event_cb, LV_EVENT_ALL, NULL);
+
+  // "All genres" and then the genres with the number of movies
+  std::string options = "All genres";
+  uint16_t selected = 0;
+  const std::vector<htpcGenre>& genres = htpc_getGenres();
+  for (size_t i=0; i<genres.size(); i++) {
+    options += "\n" + genres[i].name + " (" + std::to_string(genres[i].count) + ")";
+    if (genres[i].name == draftQuery.genre) {selected = i + 1;}
+  }
+  genreDropdown = lv_dropdown_create(viewBox);
+  lv_obj_set_pos(genreDropdown, 0, optGenreY);
+  lv_obj_set_width(genreDropdown, tabContentWidth);
+  lv_dropdown_set_options(genreDropdown, options.c_str());
+  lv_dropdown_set_selected(genreDropdown, selected);
+  lv_obj_add_event_cb(genreDropdown, genre_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
 // --- switching and updating ---------------------------------------------------
 // Deletes the widgets of the current view and builds the other one
 static void switchView(htpcView view) {
   if (view == currentView) {return;}
   lv_obj_clean(viewBox);
   posterImage = titleLabel = grandparentLabel = controlsObj = NULL;
-  toNowPlayingButton = tilesObj = NULL;
+  toNowPlayingButton = tilesObj = optionsObj = genreDropdown = NULL;
+  pillArea.x2 = pillArea.x1 - 1;
+  pressedChip = -1;
   pressedTile = -1;
   pressedButton = -1;
 
@@ -605,6 +816,9 @@ static void switchView(htpcView view) {
     lv_obj_set_layout(viewBox, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(viewBox, LV_FLEX_FLOW_COLUMN);
     buildTilesView();
+  } else if (view == VIEW_OPTIONS) {
+    lv_obj_set_layout(viewBox, 0);
+    buildOptionsView();
   } else {
     // absolute positions
     lv_obj_set_layout(viewBox, 0);
@@ -618,14 +832,14 @@ void htpc_gui_update(void) {
   const htpcPlayerState& state = htpc_getPlayerState();
   bool nowPlayingVisible = showNowPlaying && state.playing;
 
-  switchView(nowPlayingVisible ? VIEW_NOW_PLAYING : VIEW_TILES);
+  switchView(nowPlayingVisible ? VIEW_NOW_PLAYING : (showOptions ? VIEW_OPTIONS : VIEW_TILES));
 
   if (notEnoughMemory) {
     lv_label_set_text(statusLabel, "Not enough memory for Movies");
   } else if (!htpc_getBridgeOnline()) {
     lv_label_set_text(statusLabel, "htpc offline");
-  } else if (!nowPlayingVisible && htpc_getTiles().empty()) {
-    lv_label_set_text(statusLabel, "No movies yet");
+  } else if ((currentView == VIEW_TILES) && htpc_getTiles().empty()) {
+    lv_label_set_text(statusLabel, htpc_getQuery().isDefault() ? "No movies yet" : "No matching movies");
   } else {
     lv_label_set_text(statusLabel, "");
   }
@@ -649,6 +863,12 @@ void htpc_gui_playingChanged(bool playing) {
 
 static void deferredUpdate_cb(lv_timer_t* timer) {
   htpc_gui_update();
+}
+
+// Switching the view deletes the widget that may be sending the current event, so switch after the event is done
+static void scheduleUpdate() {
+  lv_timer_t* timer = lv_timer_create(deferredUpdate_cb, 0, NULL);
+  lv_timer_set_repeat_count(timer, 1);
 }
 
 static void showView_event_cb(lv_event_t* e) {
@@ -741,14 +961,23 @@ static void pagePrevious() {
   if (currentView == VIEW_TILES) {htpc_previousPage();}
 }
 
+static void toggleOptions() {
+  if (currentView == VIEW_OPTIONS) {
+    closeOptions(false);
+  } else if (currentView == VIEW_TILES) {
+    showOptions = true;
+    scheduleUpdate();
+  }
+}
+
 void gui_setKeys_htpc() {
   key_repeatModes_htpc = {
     {KEY_STOP, SHORT}, {KEY_REWI, SHORT}, {KEY_PLAY, SHORT}, {KEY_FORW, SHORT},
-    {KEY_CHUP, SHORT_REPEATED}, {KEY_CHDOW, SHORT_REPEATED},
+    {KEY_CHUP, SHORT_REPEATED}, {KEY_CHDOW, SHORT_REPEATED}, {KEY_CONF, SHORT},
   };
   key_commands_short_htpc = {
     {KEY_STOP, HTPC_STOP}, {KEY_REWI, HTPC_SEEK_BACK}, {KEY_PLAY, HTPC_PLAY_PAUSE}, {KEY_FORW, HTPC_SEEK_FORWARD},
-    {KEY_CHUP, HTPC_PAGE_PREVIOUS}, {KEY_CHDOW, HTPC_PAGE_NEXT},
+    {KEY_CHUP, HTPC_PAGE_PREVIOUS}, {KEY_CHDOW, HTPC_PAGE_NEXT}, {KEY_CONF, HTPC_OPTIONS},
   };
 }
 
@@ -784,5 +1013,6 @@ void register_gui_htpc(void){
   #if (ENABLE_WIFI_AND_MQTT == 1)
   register_callbackCommand(&HTPC_PAGE_NEXT, pageNext);
   register_callbackCommand(&HTPC_PAGE_PREVIOUS, pagePrevious);
+  register_callbackCommand(&HTPC_OPTIONS, toggleOptions);
   #endif
 }
