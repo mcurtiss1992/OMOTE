@@ -11,10 +11,12 @@
 #if (ENABLE_WIFI_AND_MQTT == 1)
 
 /*
-  Memory: the posters live in ONE block with a fixed number of slots, allocated when the first poster is
-  needed and freed with htpc_images_retainOnly({}) when the Movies tab is deleted. Downloads are copied into a
-  slot, so loading and replacing posters never fragments the heap. If all slots are used, the poster that was
-  drawn longest ago gives its slot away (the grid and the now playing view are never shown at the same time).
+  Memory: the posters live in ONE block with a fixed number of slots. It is allocated the first time a poster
+  is needed and then kept: freeing and allocating a block this big again later fails on the small, fragmented
+  ESP32 heap (measured: after a few times the largest free block was too small and only titles were shown).
+  Posters are downloaded straight into a slot, so loading and replacing them never fragments the heap.
+  If all slots are used, the poster that was drawn longest ago gives its slot away (the grid and the now
+  playing view are never shown at the same time).
 */
 
 static const size_t headerSize = sizeof(lv_img_header_t);
@@ -67,9 +69,8 @@ static bool allocateSlots() {
   return true;
 }
 
-static void freeSlots() {
-  free(slots);
-  slots = NULL;
+// the block itself is kept, only the slots are marked as free
+static void clearSlots() {
   slotsUnavailable = false;
   for (int i=0; i<slotCount; i++) {slotOwner[i].clear();}
 }
@@ -189,10 +190,10 @@ void htpc_images_retainOnly(const std::set<std::string>& urls) {
       ++it;
     }
   }
-  // the Movies tab was deleted: give the whole block back
+  // the Movies tab was deleted
   if (urls.empty()) {
     downloadQueue.clear();
-    freeSlots();
+    clearSlots();
   }
 }
 
