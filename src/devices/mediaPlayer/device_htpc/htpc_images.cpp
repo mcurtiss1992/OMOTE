@@ -97,11 +97,13 @@ bool htpc_images_loop() {
     image.lastAttempt = millis();
     if (!httpDownload(url.c_str(), &image.data)) {
       image.data.clear();
+      image.data.shrink_to_fit();
       if (image.downloadAttempts >= maxDownloadAttempts) {image.failed = true;}
       return false;
     }
     if (!prepare(image)) {
       image.data.clear();
+      image.data.shrink_to_fit();
       image.failed = true;
       return false;
     }

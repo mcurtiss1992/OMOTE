@@ -292,8 +292,71 @@ bool httpGet_HAL(const char *url, std::string *body) {
   return false;
 }
 
+// GET for data like images. Unlike httpGet_HAL it reads Content-Length and reserves the body once,
+// and reads in chunks, so that downloading several images does not fragment the heap.
 bool httpDownload_HAL(const char *url, std::string *body) {
-  return httpGet_HAL(url, body);
+  body->clear();
+  if (!isWifiConnected) {return false;}
+  std::string u(url);
+  if (u.compare(0, 7, "http://") != 0) {return false;}
+  u.erase(0, 7);
+  size_t slash = u.find('/');
+  std::string hostPort = u.substr(0, slash);
+  std::string path = (slash == std::string::npos) ? "/" : u.substr(slash);
+  uint16_t port = 80;
+  size_t colon = hostPort.find(':');
+  std::string host = hostPort.substr(0, colon);
+  if (colon != std::string::npos) port = atoi(hostPort.c_str() + colon + 1);
+
+  WiFiClient client;
+  client.setTimeout(2);
+  if (!client.connect(host.c_str(), port, 1500)) {
+    omote_log_w("HTTP download %s: connect failed\r\n", url);
+    return false;
+  }
+  client.printf("GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", path.c_str(), hostPort.c_str());
+  String status = client.readStringUntil('\n');
+  int sp = status.indexOf(' ');
+  int code = (sp > 0) ? status.substring(sp + 1).toInt() : 0;
+  if (code < 200 || code >= 300) {
+    omote_log_w("HTTP download %s failed: '%s'\r\n", url, status.c_str());
+    client.stop();
+    return false;
+  }
+  size_t contentLength = 0;
+  while (client.connected() || client.available()) {
+    String line = client.readStringUntil('\n');
+    if (line.length() == 0 || line == "\r") break;
+    if (line.length() > 15 && strncasecmp(line.c_str(), "Content-Length:", 15) == 0) {
+      contentLength = atoi(line.c_str() + 15);
+    }
+  }
+  const size_t maxSize = 16 * 1024;
+  if ((contentLength == 0) || (contentLength > maxSize)) {
+    omote_log_w("HTTP download %s: unsupported size %u\r\n", url, (unsigned int)contentLength);
+    client.stop();
+    return false;
+  }
+  body->resize(contentLength);
+  size_t received = 0;
+  unsigned long start = millis();
+  while ((received < contentLength) && (millis() - start < 3000)) {
+    int n = client.read((uint8_t*)&(*body)[received], contentLength - received);
+    if (n > 0) {
+      received += n;
+    } else if (!client.connected() && !client.available()) {
+      break;
+    } else {
+      delay(1);
+    }
+  }
+  client.stop();
+  if (received != contentLength) {
+    body->clear();
+    body->shrink_to_fit();
+    return false;
+  }
+  return true;
 }
 
 bool publishMQTTMessage_HAL(const char *topic, const char *payload){
