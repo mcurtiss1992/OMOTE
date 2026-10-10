@@ -6,3 +6,4 @@
 void setLabelActiveScene();
 void handleScene(uint16_t command, commandData commandData, std::string additionalPayload = "");
 void handleGUI  (uint16_t command, commandData commandData, std::string additionalPayload = "");
+bool showGUIbyName(std::string GUIname);

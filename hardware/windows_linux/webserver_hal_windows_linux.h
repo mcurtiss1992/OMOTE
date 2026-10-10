@@ -17,5 +17,8 @@ bool webserver_consumeRestartIntoSetup_HAL(void);
 std::string webserver_getAddress_HAL(void);
 typedef bool (*tSendConfiguredCommand_cb)(std::string device, std::string command, std::string payload);
 void set_sendConfiguredCommand_cb_HAL(tSendConfiguredCommand_cb pSendConfiguredCommand_cb);
+// shows the GUI (tab) with that name, for remote control and testing. Returns false if there is no such GUI.
+typedef bool (*tShowGui_cb)(std::string name);
+void set_showGui_cb_HAL(tShowGui_cb pShowGui_cb);
 
 #endif

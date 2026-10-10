@@ -22,6 +22,9 @@ std::string webserver_getAddress_HAL(void);
 // /sendCommand executes a configured command ("Test" buttons of the config app). Returns false if it does not exist.
 typedef bool (*tSendConfiguredCommand_cb)(std::string device, std::string command, std::string payload);
 void set_sendConfiguredCommand_cb_HAL(tSendConfiguredCommand_cb pSendConfiguredCommand_cb);
+// shows the GUI (tab) with that name, for remote control and testing. Returns false if there is no such GUI.
+typedef bool (*tShowGui_cb)(std::string name);
+void set_showGui_cb_HAL(tShowGui_cb pShowGui_cb);
 
 #endif
 

@@ -170,6 +170,22 @@ void showSpecificGUI(GUIlists GUIlist, std::string GUIname) {
   }  
 }
 
+// Shows a GUI by name, from the GUI list that is shown now, or else from the main GUI list. Returns false if not found.
+bool showGUIbyName(std::string GUIname) {
+  GUIlists active = gui_memoryOptimizer_getActiveGUIlist();
+  GUIlists lists[2] = {active, (active == MAIN_GUI_LIST) ? SCENE_GUI_LIST : MAIN_GUI_LIST};
+  for (GUIlists list : lists) {
+    gui_list guis = get_gui_list_withFallback(list);
+    for (size_t i=0; i < guis->size(); i++) {
+      if (guis->at(i) == GUIname) {
+        showSpecificGUI(list, GUIname);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void handleGUI(uint16_t command, commandData commandData, std::string additionalPayload = "") {
 
   auto current = commandData.commandPayloads.begin();

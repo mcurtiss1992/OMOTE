@@ -39,6 +39,10 @@ static bool restartRequested = false;
 RTC_NOINIT_ATTR static uint32_t restartIntoSetup;
 
 static tSendConfiguredCommand_cb thisSendConfiguredCommand_cb = NULL;
+static tShowGui_cb thisShowGui_cb = NULL;
+void set_showGui_cb_HAL(tShowGui_cb pShowGui_cb) {
+  thisShowGui_cb = pShowGui_cb;
+}
 void set_sendConfiguredCommand_cb_HAL(tSendConfiguredCommand_cb pSendConfiguredCommand_cb) {
   thisSendConfiguredCommand_cb = pSendConfiguredCommand_cb;
 }
@@ -382,6 +386,16 @@ static void handleSendCommand() {
   sendText(200, F("Command sent"));
 }
 
+// Shows a GUI (tab) by name, e.g. /showGui?name=Movies
+static void handleShowGui() {
+  std::string name = server.arg("name").c_str();
+  if ((thisShowGui_cb == NULL) || !thisShowGui_cb(name)) {
+    sendText(404, F("No GUI with that name in the current GUI lists"));
+    return;
+  }
+  sendText(200, F("GUI shown"));
+}
+
 // The remote reads its configuration only during startup, so changes are applied with a restart.
 static void handleRestart() {
   sendText(200, F("Restarting"));
@@ -417,6 +431,7 @@ void init_webserver_HAL() {
   server.on("/smallUpload", HTTP_POST, handlePutJson);
   server.on("/postJson", HTTP_POST, handlePostJson, handlePostJsonUpload);
   server.on("/sendCommand", HTTP_POST, handleSendCommand);
+  server.on("/showGui", HTTP_GET, handleShowGui);
   server.on("/restart", HTTP_POST, handleRestart);
   // Re-registering at runtime duplicated scenes and commands. A restart applies the configuration cleanly.
   server.on("/registerDynamicDevices", HTTP_GET, handleRestart);

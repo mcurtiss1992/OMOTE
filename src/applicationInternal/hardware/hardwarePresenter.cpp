@@ -1,6 +1,7 @@
 #include <string>
 #include <list>
 #include "applicationInternal/hardware/hardwarePresenter.h"
+#include "applicationInternal/scenes/sceneHandler.h"
 // for registering the callback to show received IR messages
 #include "guis/gui_irReceiver.h"
 // for registering the callback to receive MQTT messages
@@ -277,6 +278,8 @@ void init_mqtt(void) {
 void init_webserver_hal(void){
   // the "Test" buttons of the config app execute configured commands
   set_sendConfiguredCommand_cb_HAL(&executeDynamicCommand);
+  // /showGui?name=... shows a tab, e.g. to test a GUI without touching the remote
+  set_showGui_cb_HAL(&showGUIbyName);
   init_webserver_HAL();
 }
 

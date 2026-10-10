@@ -60,6 +60,10 @@ static std::chrono::steady_clock::time_point restartRequestedAt;
 static const std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
 
 static tSendConfiguredCommand_cb thisSendConfiguredCommand_cb = NULL;
+static tShowGui_cb thisShowGui_cb = NULL;
+void set_showGui_cb_HAL(tShowGui_cb pShowGui_cb) {
+  thisShowGui_cb = pShowGui_cb;
+}
 void set_sendConfiguredCommand_cb_HAL(tSendConfiguredCommand_cb pSendConfiguredCommand_cb) {
   thisSendConfiguredCommand_cb = pSendConfiguredCommand_cb;
 }
@@ -424,6 +428,15 @@ static void handleSendCommand(socket_t client, const Request& req) {
   sendText(client, 200, "Command sent");
 }
 
+// Shows a GUI (tab) by name, e.g. /showGui?name=Movies
+static void handleShowGui(socket_t client, const Request& req) {
+  if ((thisShowGui_cb == NULL) || !thisShowGui_cb(req.arg("name"))) {
+    sendText(client, 404, "No GUI with that name in the current GUI lists");
+    return;
+  }
+  sendText(client, 200, "GUI shown");
+}
+
 static void handleRestart(socket_t client) {
   sendText(client, 200, "Restarting");
   restartRequested = true;
@@ -463,6 +476,8 @@ static void route(socket_t client, const Request& req) {
     handlePostJson(client, req);
   } else if (post && p == "/sendCommand") {
     handleSendCommand(client, req);
+  } else if (get && p == "/showGui") {
+    handleShowGui(client, req);
   } else if ((post && p == "/restart") ||
              (get && (p == "/registerDynamicDevices" || p == "/registerDynamicScenes" || p == "/registerDynamicGuis"))) {
     handleRestart(client);
