@@ -71,6 +71,8 @@ const std::vector<htpcTile>& htpc_getTiles();
 int htpc_getPageOffset();
 // true if there is (probably) a next page
 bool htpc_hasNextPage();
+// number of movies in the whole list, -1 if the bridge did not tell
+int htpc_getTotal();
 // request the next/previous page. Returns false if there is none. The GUI is updated when the page arrived.
 bool htpc_nextPage();
 bool htpc_previousPage();

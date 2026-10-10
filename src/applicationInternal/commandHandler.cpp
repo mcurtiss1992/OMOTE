@@ -70,6 +70,13 @@ void register_command(uint16_t *command, commandData aCommandData) {
   commands[*command] = aCommandData;
 }
 
+static std::map<uint16_t, commandCallback> callbackCommands;
+
+void register_callbackCommand(uint16_t *command, commandCallback callback) {
+  register_command(command, makeCommandData(CALLBACK, {}));
+  callbackCommands[*command] = callback;
+}
+
 uint16_t getComID(void){
   return uniqueCommandID;
 }
@@ -162,6 +169,13 @@ std::string convertStringListToString(std::list<std::string> listOfStrings) {
 
 void executeCommandWithData(uint16_t command, commandData commandData, std::string additionalPayload = "") {
   switch (commandData.commandHandler) {
+    case CALLBACK: {
+      auto callback = callbackCommands.find(command);
+      if (callback != callbackCommands.end()) {
+        callback->second();
+      }
+      break;
+    }
     case IR: {
       omote_log_v("  generic IR, payloads %s\r\n", convertStringListToString(commandData.commandPayloads).c_str());
 

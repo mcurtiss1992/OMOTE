@@ -16,6 +16,9 @@
 #include "scenes/scene__default.h"
 
 uint16_t GUI_HTPC_ACTIVATE;
+// channel keys page through the movies, holding them pages quickly
+uint16_t HTPC_PAGE_NEXT;
+uint16_t HTPC_PAGE_PREVIOUS;
 
 std::map<char, repeatModes> key_repeatModes_htpc = {};
 std::map<char, uint16_t> key_commands_short_htpc = {};
@@ -297,6 +300,33 @@ static void tiles_draw_event_cb(lv_event_t* e) {
       textArea.y1 += (tileHeight - size.y) / 2;
       lv_draw_label(draw_ctx, &label, &textArea, text.c_str(), NULL);
     }
+  }
+
+  // position in the list, e.g. "13-18 of 312", in a pill at the bottom over the peek row
+  if (!tiles.empty() && ((htpc_getPageOffset() > 0) || htpc_hasNextPage())) {
+    char position[32];
+    int first = htpc_getPageOffset() + 1;
+    int last = htpc_getPageOffset() + (int)tiles.size();
+    if (htpc_getTotal() > 0) {
+      snprintf(position, sizeof(position), "%d-%d of %d", first, last, htpc_getTotal());
+    } else {
+      snprintf(position, sizeof(position), "%d-%d", first, last);
+    }
+    label.font = &lv_font_montserrat_12;
+    lv_point_t size;
+    lv_txt_get_size(&size, position, label.font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    lv_area_t pill;
+    pill.x1 = coords.x1 + (lv_area_get_width(&coords) - size.x) / 2 - 8;
+    pill.x2 = pill.x1 + size.x + 16 - 1;
+    pill.y2 = coords.y2 - 2;
+    pill.y1 = pill.y2 - size.y - 4 + 1;
+    rect.radius = LV_RADIUS_CIRCLE;
+    rect.bg_color = lv_color_black();
+    rect.bg_opa = LV_OPA_70;
+    lv_draw_rect(draw_ctx, &rect, &pill);
+    lv_area_t positionArea = pill;
+    positionArea.y1 += 2;
+    lv_draw_label(draw_ctx, &label, &positionArea, position, NULL);
   }
 
   draw_ctx->clip_area = clipOriginal;
@@ -642,6 +672,11 @@ static void imageTimer_cb(lv_timer_t* timer) {
 static void tab_gesture_event_cb(lv_event_t* e) {
   lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
   bool tilesVisible = (currentView == VIEW_TILES);
+  // a swipe is not a press on the tile where it started
+  if ((pressedTile >= 0) && (tilesObj != NULL)) {
+    pressedTile = -1;
+    lv_obj_invalidate(tilesObj);
+  }
   if (dir == LV_DIR_TOP) {
     if (tilesVisible) {htpc_nextPage();}
   } else if (dir == LV_DIR_BOTTOM) {
@@ -698,12 +733,22 @@ void notify_tab_before_delete_htpc(void) {
   htpc_images_retainOnly(std::set<std::string>());
 }
 
+static void pageNext() {
+  if (currentView == VIEW_TILES) {htpc_nextPage();}
+}
+
+static void pagePrevious() {
+  if (currentView == VIEW_TILES) {htpc_previousPage();}
+}
+
 void gui_setKeys_htpc() {
   key_repeatModes_htpc = {
     {KEY_STOP, SHORT}, {KEY_REWI, SHORT}, {KEY_PLAY, SHORT}, {KEY_FORW, SHORT},
+    {KEY_CHUP, SHORT_REPEATED}, {KEY_CHDOW, SHORT_REPEATED},
   };
   key_commands_short_htpc = {
     {KEY_STOP, HTPC_STOP}, {KEY_REWI, HTPC_SEEK_BACK}, {KEY_PLAY, HTPC_PLAY_PAUSE}, {KEY_FORW, HTPC_SEEK_FORWARD},
+    {KEY_CHUP, HTPC_PAGE_PREVIOUS}, {KEY_CHDOW, HTPC_PAGE_NEXT},
   };
 }
 
@@ -736,4 +781,8 @@ void register_gui_htpc(void){
     );
 
   register_command(&GUI_HTPC_ACTIVATE, makeCommandData(GUI, {std::to_string(MAIN_GUI_LIST), std::string(tabName_htpc)}));
+  #if (ENABLE_WIFI_AND_MQTT == 1)
+  register_callbackCommand(&HTPC_PAGE_NEXT, pageNext);
+  register_callbackCommand(&HTPC_PAGE_PREVIOUS, pagePrevious);
+  #endif
 }

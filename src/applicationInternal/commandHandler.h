@@ -82,6 +82,7 @@ enum commandHandlers {
   SCENE,
   GUI,
   IR,
+  CALLBACK,   // runs a function on the remote, see register_callbackCommand()
   #if (ENABLE_WIFI_AND_MQTT == 1)
   MQTT,
   HTTP,
@@ -99,6 +100,9 @@ struct commandData {
 uint16_t getComID(void);
 // register a command and give it a command id
 void register_command(uint16_t *command, commandData aCommandData);
+// register a command that runs a function on the remote, e.g. for keys that do something in a GUI
+typedef void (*commandCallback)(void);
+void register_callbackCommand(uint16_t *command, commandCallback callback);
 // only get a unique ID. used by KEYBOARD_DUMMY and COMMAND_UNKNOWN
 void get_uniqueCommandID(uint16_t *command);
 

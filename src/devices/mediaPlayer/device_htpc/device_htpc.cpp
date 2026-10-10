@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include <lvgl.h>
 #include "applicationInternal/commandHandler.h"
 #include "applicationInternal/hardware/arduinoLayer.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
@@ -25,6 +26,15 @@ static std::vector<htpcTile> tiles;
 static int pageOffset = 0;
 static int total = -1;          // -1 if the bridge didn't tell
 static int requestedOffset = -1;
+// To make swiping instant, the next page is preloaded (titles and urls only, about 1 kB),
+// and the page before is kept when going forward. Posters are only loaded for the visible page.
+struct htpcCachedPage {
+  int offset = -1;
+  std::vector<htpcTile> tiles;
+};
+static htpcCachedPage nextPage;
+static htpcCachedPage previousPage;
+static int prefetchOffset = -1;
 static htpcPlayerState playerState;
 // assume online until the bridge tells otherwise, so that we don't show "offline" before the retained message arrived
 static bool bridgeOnline = true;
@@ -68,27 +78,103 @@ bool htpc_hasNextPage() {
   return (int)tiles.size() == HTPC_TILES_PER_PAGE;
 }
 
-static void requestPage(int offset) {
-  requestedOffset = offset;
+static void publishGetTiles(int offset) {
   std::string payload = "{\"action\":\"get_tiles\",\"offset\":" + std::to_string(offset) + ",\"count\":" + std::to_string(HTPC_TILES_PER_PAGE) + "}";
-  omote_log_i("htpc: request tiles at offset %d\r\n", offset);
   publishMQTTMessage(HTPC_TOPIC_CMD, payload.c_str());
 }
 
+static void requestPage(int offset) {
+  requestedOffset = offset;
+  omote_log_i("htpc: request tiles at offset %d\r\n", offset);
+  publishGetTiles(offset);
+}
+
+// preload the page after the visible one, if there is one and it is not already there
+static void prefetchNow(lv_timer_t* timer) {
+  int offset = pageOffset + HTPC_TILES_PER_PAGE;
+  if (!htpc_hasNextPage() || (nextPage.offset == offset) || (prefetchOffset == offset)) {return;}
+  prefetchOffset = offset;
+  publishGetTiles(offset);
+}
+
+// Most calls come from the MQTT receive callback, where publishing can deadlock the MQTT client
+// (MQTT-C in the simulator). So the request is sent from the GUI loop.
+static void prefetchNextPage() {
+  lv_timer_t* timer = lv_timer_create(prefetchNow, 0, NULL);
+  lv_timer_set_repeat_count(timer, 1);
+}
+
+static void showPage(int offset, const std::vector<htpcTile>& items) {
+  if (offset > pageOffset) {
+    // going forward: keep the page we leave for going back
+    previousPage.offset = pageOffset;
+    previousPage.tiles = tiles;
+  }
+  pageOffset = offset;
+  tiles = items;
+  if (nextPage.offset != pageOffset + HTPC_TILES_PER_PAGE) {
+    nextPage.offset = -1;
+    nextPage.tiles.clear();
+  }
+}
+
+int htpc_getTotal() {
+  return total;
+}
+
 bool htpc_nextPage() {
+  // while a page is still being loaded (e.g. a key is held), go on from the page that was asked for
+  if (requestedOffset > pageOffset) {
+    int offset = requestedOffset + HTPC_TILES_PER_PAGE;
+    if ((total >= 0) && (offset >= total)) {return false;}
+    requestPage(offset);
+    return true;
+  }
   if (!htpc_hasNextPage()) {return false;}
-  requestPage(pageOffset + HTPC_TILES_PER_PAGE);
+  int offset = pageOffset + HTPC_TILES_PER_PAGE;
+  if (nextPage.offset == offset) {
+    // preloaded: show it right away and preload the one after
+    std::vector<htpcTile> items = nextPage.tiles;
+    nextPage.offset = -1;
+    nextPage.tiles.clear();
+    showPage(offset, items);
+    htpc_gui_update();
+    prefetchNextPage();
+    return true;
+  }
+  requestPage(offset);
   return true;
 }
 
 bool htpc_previousPage() {
+  // while a page is still being loaded (e.g. a key is held), go on from the page that was asked for
+  if ((requestedOffset >= 0) && (requestedOffset < pageOffset)) {
+    int offset = requestedOffset - HTPC_TILES_PER_PAGE;
+    if (offset < 0) {return false;}
+    if (offset == 0) {
+      requestedOffset = -1;
+      pageOffset = 0;
+      tiles = firstPage;
+      htpc_gui_update();
+      return true;
+    }
+    requestPage(offset);
+    return true;
+  }
   if (pageOffset == 0) {return false;}
   int offset = pageOffset - HTPC_TILES_PER_PAGE;
-  if (offset <= 0) {
-    // the first page is always known from the retained topic
+  if (offset < 0) {offset = 0;}
+  if ((offset == 0) || (previousPage.offset == offset)) {
+    // the first page is always known from the retained topic, the one before was kept
+    std::vector<htpcTile> items = (offset == 0) ? firstPage : previousPage.tiles;
+    // the page we leave is the next one now
+    nextPage.offset = pageOffset;
+    nextPage.tiles = tiles;
     requestedOffset = -1;
-    pageOffset = 0;
-    tiles = firstPage;
+    pageOffset = offset;
+    tiles = items;
+    previousPage.offset = -1;
+    previousPage.tiles.clear();
     htpc_gui_update();
     return true;
   }
@@ -139,6 +225,10 @@ static bool parseFirstPage(const std::string& payload) {
   firstPage = parseTileArray(doc.as<JsonArray>());
   if (pageOffset == 0) {
     tiles = firstPage;
+    // the list changed, preload again
+    nextPage.offset = -1;
+    nextPage.tiles.clear();
+    prefetchNextPage();
   }
   return true;
 }
@@ -151,17 +241,34 @@ static bool parsePage(const std::string& payload) {
     return false;
   }
   int offset = doc["offset"] | -1;
-  if ((offset != requestedOffset) || (offset <= 0)) {return false;} // not the page we asked for
-  requestedOffset = -1;
-  total = doc["total"] | -1;
+  if (offset <= 0) {return false;}
+  bool requested = (offset == requestedOffset);
+  bool prefetched = (offset == prefetchOffset);
+  if (!requested && !prefetched) {return false;} // not a page we asked for
+  if (!doc["total"].isNull()) {total = doc["total"];}
   std::vector<htpcTile> items = parseTileArray(doc["items"].as<JsonArray>());
-  if (items.empty()) {
-    // we were at the end. Remember that, so that the GUI stops offering a next page
-    total = pageOffset + (int)tiles.size();
-    return true;
+
+  if (prefetched) {
+    prefetchOffset = -1;
+    if (items.empty()) {
+      // the visible page is the last one
+      total = pageOffset + (int)tiles.size();
+    } else if (!requested) {
+      nextPage.offset = offset;
+      nextPage.tiles = items;
+      return true; // nothing changes on screen except maybe the position
+    }
   }
-  pageOffset = offset;
-  tiles = items;
+  if (requested) {
+    requestedOffset = -1;
+    if (items.empty()) {
+      // we were at the end. Remember that, so that the GUI stops offering a next page
+      total = pageOffset + (int)tiles.size();
+      return true;
+    }
+    showPage(offset, items);
+    prefetchNextPage();
+  }
   return true;
 }
 
