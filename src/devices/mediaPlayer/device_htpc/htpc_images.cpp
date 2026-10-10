@@ -2,6 +2,7 @@
 #include <list>
 #include <algorithm>
 #include <string.h>
+#include <stdlib.h>
 #include <lvgl.h>
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
@@ -9,52 +10,124 @@
 
 #if (ENABLE_WIFI_AND_MQTT == 1)
 
-// keep this much heap free for WiFi, MQTT and the web server. Below that, tiles show their title instead of the poster.
-static const unsigned long minFreeHeap = 16 * 1024;
+/*
+  Memory: the posters live in ONE block with a fixed number of slots, allocated when the first poster is
+  needed and freed with htpc_images_retainOnly({}) when the Movies tab is deleted. Downloads are copied into a
+  slot, so loading and replacing posters never fragments the heap. If all slots are used, the poster that was
+  drawn longest ago gives its slot away (the grid and the now playing view are never shown at the same time).
+*/
+
+static const size_t headerSize = sizeof(lv_img_header_t);
+static const size_t paletteSize = 16 * sizeof(lv_color32_t);
+static const size_t slotSize = headerSize + paletteSize + ((HTPC_POSTER_WIDTH + 1) / 2) * HTPC_POSTER_HEIGHT;
+static const int slotCount = 6;
+// the slots are only allocated if this much is left in one piece afterwards, otherwise tiles show their titles
+static const unsigned long minLargestBlockAfterSlots = 6 * 1024;
+// a download needs a temporary buffer of one poster
+static const unsigned long minFreeHeapForDownload = 10 * 1024;
 // the bridge creates posters on demand, so the first download of a new page can fail
 static const int maxDownloadAttempts = 3;
 static const unsigned long retryDelay_ms = 5000;
 
-static const size_t headerSize = sizeof(lv_img_header_t);
-static const size_t paletteSize = 16 * sizeof(lv_color32_t);
-
 struct htpcImage {
-  std::string data;              // the downloaded file: header, palette and pixels
+  int slot = -1;                 // -1: not loaded
   bool failed = false;           // invalid file or all downloads failed, don't try again
   int downloadAttempts = 0;
   unsigned long lastAttempt = 0;
+  uint32_t lastUsed = 0;         // for giving away the slot that was used longest ago
   lv_img_dsc_t dsc;
 };
 
 static std::map<std::string, htpcImage> images;
 static std::list<std::string> downloadQueue;
+static uint8_t* slots = NULL;
+static std::string slotOwner[slotCount];
+static uint32_t useCounter = 0;
+static bool slotsUnavailable = false;   // allocating failed, don't try again until the tab is created again
 
 static bool isQueued(const std::string& url) {
   return std::find(downloadQueue.begin(), downloadQueue.end(), url) != downloadQueue.end();
 }
 
-static bool enoughHeap() {
+static bool allocateSlots() {
+  if (slots != NULL) {return true;}
+  if (slotsUnavailable) {return false;}
   unsigned long heapSize, freeHeap, maxAllocHeap, minFree;
   get_heapUsage(&heapSize, &freeHeap, &maxAllocHeap, &minFree);
-  // the simulator does not know its heap
-  return (heapSize == 0) || (freeHeap > minFreeHeap);
-}
-
-// Checks the downloaded file and sets up the image descriptor pointing into it
-static bool prepare(htpcImage& image) {
-  if (image.data.size() < headerSize + paletteSize) {return false;}
-  lv_img_header_t header;
-  memcpy(&header, image.data.data(), headerSize);
-  size_t expectedSize = headerSize + paletteSize + ((header.w + 1) / 2) * header.h;
-  if ((header.cf != LV_IMG_CF_INDEXED_4BIT) || (header.w == 0) || (header.w > HTPC_POSTER_WIDTH) || (header.h == 0) || (header.h > HTPC_POSTER_HEIGHT)
-      || (image.data.size() != expectedSize)) {
-    omote_log_w("htpc: poster has an unexpected format (cf %d, %dx%d, %u bytes)\r\n", header.cf, header.w, header.h, (unsigned int)image.data.size());
+  // the simulator does not know the largest block (reports 0)
+  if ((maxAllocHeap > 0) && (maxAllocHeap < slotCount * slotSize + minLargestBlockAfterSlots)) {
+    omote_log_w("htpc: not enough heap in one piece for the posters (%lu bytes), showing titles\r\n", maxAllocHeap);
+    slotsUnavailable = true;
     return false;
   }
+  slots = (uint8_t*)malloc(slotCount * slotSize);
+  if (slots == NULL) {
+    slotsUnavailable = true;
+    return false;
+  }
+  for (int i=0; i<slotCount; i++) {slotOwner[i].clear();}
+  return true;
+}
+
+static void freeSlots() {
+  free(slots);
+  slots = NULL;
+  slotsUnavailable = false;
+  for (int i=0; i<slotCount; i++) {slotOwner[i].clear();}
+}
+
+static void releaseSlot(htpcImage& image) {
+  if (image.slot >= 0) {
+    lv_img_cache_invalidate_src(&image.dsc);
+    slotOwner[image.slot].clear();
+    image.slot = -1;
+  }
+}
+
+// a free slot, or the one of the image that was used longest ago
+static int takeSlot() {
+  for (int i=0; i<slotCount; i++) {
+    if (slotOwner[i].empty()) {return i;}
+  }
+  int oldest = -1;
+  uint32_t oldestUse = UINT32_MAX;
+  for (int i=0; i<slotCount; i++) {
+    auto owner = images.find(slotOwner[i]);
+    if ((owner != images.end()) && (owner->second.lastUsed < oldestUse)) {
+      oldestUse = owner->second.lastUsed;
+      oldest = i;
+    }
+  }
+  if (oldest >= 0) {
+    htpcImage& previous = images.at(slotOwner[oldest]);
+    releaseSlot(previous);
+    // it is downloaded again if it is shown again
+    previous.downloadAttempts = 0;
+  }
+  return oldest;
+}
+
+// Checks the downloaded file, copies it into a slot and sets up the image descriptor
+static bool store(htpcImage& image, const std::string& url, const std::string& data) {
+  if (data.size() < headerSize + paletteSize) {return false;}
+  lv_img_header_t header;
+  memcpy(&header, data.data(), headerSize);
+  size_t expectedSize = headerSize + paletteSize + ((header.w + 1) / 2) * header.h;
+  if ((header.cf != LV_IMG_CF_INDEXED_4BIT) || (header.w == 0) || (header.w > HTPC_POSTER_WIDTH) || (header.h == 0) || (header.h > HTPC_POSTER_HEIGHT)
+      || (data.size() != expectedSize) || (expectedSize > slotSize)) {
+    omote_log_w("htpc: poster has an unexpected format (cf %d, %dx%d, %u bytes)\r\n", header.cf, header.w, header.h, (unsigned int)data.size());
+    return false;
+  }
+  int slot = takeSlot();
+  if (slot < 0) {return false;}
+  uint8_t* buffer = slots + slot * slotSize;
+  memcpy(buffer, data.data(), data.size());
+  slotOwner[slot] = url;
+  image.slot = slot;
   memset(&image.dsc, 0, sizeof(image.dsc));
   image.dsc.header = header;
-  image.dsc.data_size = image.data.size() - headerSize;
-  image.dsc.data = (const uint8_t*)image.data.data() + headerSize;
+  image.dsc.data_size = data.size() - headerSize;
+  image.dsc.data = buffer + headerSize;
   return true;
 }
 
@@ -62,14 +135,20 @@ static bool prepare(htpcImage& image) {
 const lv_img_dsc_t* htpc_images_get(const std::string& url) {
   if (url.empty()) {return NULL;}
 
-  if (images.count(url) == 0) {
+  auto found = images.find(url);
+  if (found == images.end()) {
     images[url] = htpcImage();
     downloadQueue.push_back(url);
     return NULL;
   }
 
-  htpcImage& image = images.at(url);
-  if (image.failed || image.data.empty()) {return NULL;}
+  htpcImage& image = found->second;
+  image.lastUsed = ++useCounter;
+  if (image.slot < 0) {
+    // lost its slot to another poster: load it again
+    if (!image.failed && (image.downloadAttempts == 0) && !isQueued(url)) {downloadQueue.push_back(url);}
+    return NULL;
+  }
   return &image.dsc;
 }
 
@@ -77,7 +156,7 @@ bool htpc_images_loop() {
   // queue failed downloads again after a while
   for (auto& entry : images) {
     htpcImage& image = entry.second;
-    if (!image.failed && image.data.empty() && (image.downloadAttempts > 0) && (millis() - image.lastAttempt > retryDelay_ms) && !isQueued(entry.first)) {
+    if (!image.failed && (image.slot < 0) && (image.downloadAttempts > 0) && (millis() - image.lastAttempt > retryDelay_ms) && !isQueued(entry.first)) {
       downloadQueue.push_back(entry.first);
     }
   }
@@ -85,31 +164,30 @@ bool htpc_images_loop() {
   while (!downloadQueue.empty()) {
     std::string url = downloadQueue.front();
     downloadQueue.pop_front();
-    if (images.count(url) == 0) {continue;} // forgotten in the meantime
-    if (!enoughHeap()) {
-      // try again later, maybe another page needs less
+    auto found = images.find(url);
+    if ((found == images.end()) || (found->second.slot >= 0)) {continue;} // forgotten or loaded in the meantime
+    if (!allocateSlots()) {return false;}
+
+    unsigned long heapSize, freeHeap, maxAllocHeap, minFree;
+    get_heapUsage(&heapSize, &freeHeap, &maxAllocHeap, &minFree);
+    if ((heapSize > 0) && (freeHeap < minFreeHeapForDownload)) {
+      // try again later
       downloadQueue.push_back(url);
       return false;
     }
 
-    htpcImage& image = images.at(url);
+    htpcImage& image = found->second;
     image.downloadAttempts++;
     image.lastAttempt = millis();
-    if (!httpDownload(url.c_str(), &image.data)) {
-      image.data.clear();
-      image.data.shrink_to_fit();
+    std::string data;
+    if (!httpDownload(url.c_str(), &data)) {
       if (image.downloadAttempts >= maxDownloadAttempts) {image.failed = true;}
       return false;
     }
-    if (!prepare(image)) {
-      image.data.clear();
-      image.data.shrink_to_fit();
+    if (!store(image, url, data)) {
       image.failed = true;
       return false;
     }
-    // no reallocation from now on, the descriptor points into the string
-    image.data.shrink_to_fit();
-    image.dsc.data = (const uint8_t*)image.data.data() + headerSize;
     return true;
   }
   return false;
@@ -118,13 +196,16 @@ bool htpc_images_loop() {
 void htpc_images_retainOnly(const std::set<std::string>& urls) {
   for (auto it = images.begin(); it != images.end(); ) {
     if (urls.count(it->first) == 0) {
-      if (!it->second.data.empty()) {
-        lv_img_cache_invalidate_src(&it->second.dsc);
-      }
+      releaseSlot(it->second);
       it = images.erase(it);
     } else {
       ++it;
     }
+  }
+  // the Movies tab was deleted: give the whole block back
+  if (urls.empty()) {
+    downloadQueue.clear();
+    freeSlots();
   }
 }
 
