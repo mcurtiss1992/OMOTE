@@ -106,6 +106,14 @@ void register_command_dynamic(const char* name, const char* commandType, const c
   }
 
   // lookups build the name with snprintf(MAX_NAME_LEN), so store it truncated the same way
+  uint16_t cmdId = 0;
+  get_uniqueCommandID(&cmdId);
+  if (store_command_packed(cmdId, name, cmd)) {
+    omote_log_d("Registered command: %s with value %d\r\n", name, cmdId);
+  }
+}
+
+bool store_command_packed(uint16_t cmdId, const char* name, const commandData& cmd) {
   std::string storedName(name);
   if (storedName.size() > MAX_NAME_LEN - 1) storedName.resize(MAX_NAME_LEN - 1);
 
@@ -113,15 +121,12 @@ void register_command_dynamic(const char* name, const char* commandType, const c
   for (const std::string& payload : cmd.commandPayloads) recordSize += payload.size() + 1;
   if (cmdIndex.size() >= MAX_COMMANDS) {
     omote_log_e("Error: Command table full!\r\n");
-    return;
+    return false;
   }
   if (cmdPool.size() + recordSize > 0xFFFF || cmd.commandPayloads.size() > 255) {
     omote_log_e("Error: Command storage full!\r\n");
-    return;
+    return false;
   }
-
-  uint16_t cmdId = 0;
-  get_uniqueCommandID(&cmdId);
 
   uint16_t offset = cmdPool.size();
   cmdPool.push_back(cmdId & 0xFF);
@@ -133,8 +138,7 @@ void register_command_dynamic(const char* name, const char* commandType, const c
     cmdPool.insert(cmdPool.end(), payload.c_str(), payload.c_str() + payload.size() + 1);
   }
   cmdIndex.push_back(offset);
-
-  omote_log_d("Registered command: %s with value %d\r\n", name, cmdId);
+  return true;
 }
 
 static uint16_t recordId(uint16_t offset) {
@@ -196,6 +200,11 @@ bool register_dynamic_device(const char *deviceName) {
   return true;
 }
 
+void commands_shrinkToFit() {
+  cmdPool.shrink_to_fit();
+  cmdIndex.shrink_to_fit();
+}
+
 void clearCommands() {
   cmdPool.clear();
   cmdPool.shrink_to_fit();
@@ -205,7 +214,7 @@ void clearCommands() {
 
 // Reads a master devices file and registers each dynamic device.
 void register_dynamic_devices() {
-  clearCommands();
+  // no clearCommands(): the built-in commands (register_command) are in the same store
 
   JsonDocument devices;
   if (!loadJsonFile("devices.json", devices)) {

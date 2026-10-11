@@ -59,16 +59,16 @@ uint16_t KEYBOARD_MUTE                      ; //PPCAT(KEYBOARD_PREFIX, MUTE)
 uint16_t KEYBOARD_VOLUME_INCREMENT          ; //PPCAT(KEYBOARD_PREFIX, VOLUME_INCREMENT)
 uint16_t KEYBOARD_VOLUME_DECREMENT          ; //PPCAT(KEYBOARD_PREFIX, VOLUME_DECREMENT)
 
-std::map<uint16_t, commandData> commands;
 
 uint16_t uniqueCommandID = 0;
 
 // register a command and give it a command id
+// All commands live in the packed store of devices_dynamic.cpp (a std::map<uint16_t, commandData> cost ~150 bytes per command)
 void register_command(uint16_t *command, commandData aCommandData) {
   *command = uniqueCommandID;
   uniqueCommandID++;
 
-  commands[*command] = aCommandData;
+  store_command_packed(*command, "", aCommandData);
 }
 
 static std::map<uint16_t, commandCallback> callbackCommands;
@@ -282,17 +282,12 @@ void executeCommandWithData(uint16_t command, commandData commandData, std::stri
 
 void executeCommand(uint16_t command, std::string additionalPayload) {
   try {
-    if (commands.count(command) > 0) {
+    commandData data;
+    if (getDynamicCommandData(command, data)) {
       omote_log_d("command: will execute command '%u' with additionalPayload '%s'\r\n", command, additionalPayload.c_str());
-      executeCommandWithData(command, commands.at(command), additionalPayload);
+      executeCommandWithData(command, data, additionalPayload);
     } else {
-      commandData dynamicData;
-      if (getDynamicCommandData(command, dynamicData)) {
-        omote_log_d("command: will execute dynamic command '%u' with additionalPayload '%s'\r\n", command, additionalPayload.c_str());
-        executeCommandWithData(command, dynamicData, additionalPayload);
-      } else {
-        omote_log_w("command: command '%u' not found\r\n", command);
-      }
+      omote_log_w("command: command '%u' not found\r\n", command);
     }
   }
   catch (const std::out_of_range& oor) {

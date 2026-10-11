@@ -33,6 +33,7 @@
 #include "applicationInternal/dynamicConfig/scenes_dynamic.h"
 #include "applicationInternal/dynamicConfig/guis_dynamic.h"
 
+
 #if defined(ARDUINO)
 // in case of Arduino we have a setup() and a loop()
 void setup() {
@@ -109,6 +110,8 @@ int main(int argc, char *argv[]) {
   // GUIs and scenes from the config files. GUIs first, because a scene can define which GUIs are shown while it is active
   register_dynamic_guis();
   register_dynamic_scenes();
+  // the command store grew while GUIs and scenes registered their commands
+  commands_shrinkToFit();
 
   #if (ENABLE_WIFI_AND_MQTT == 1)
   // the config app restarted the remote to apply a new configuration: stay in setup mode

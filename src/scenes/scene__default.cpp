@@ -22,9 +22,9 @@ std::string scene_gui_prev = "GUI_prev";
 uint16_t GUI_NEXT;
 std::string scene_gui_next = "GUI_next";
 
-std::map<char, repeatModes> key_repeatModes_default;
-std::map<char, uint16_t> key_commands_short_default;
-std::map<char, uint16_t> key_commands_long_default;
+KeyMap<repeatModes> key_repeatModes_default;
+KeyMap<uint16_t> key_commands_short_default;
+KeyMap<uint16_t> key_commands_long_default;
 
 // This is the main list of guis we want to be shown when swiping. Need not to be all the guis that have been registered, can be only a subset.
 // You can swipe through these guis. Will be in the order you place them here in the vector.

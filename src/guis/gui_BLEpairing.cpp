@@ -13,9 +13,9 @@
 #if (ENABLE_KEYBOARD_BLE == 1)
 uint16_t GUI_BLEPAIRING_ACTIVATE;
 
-std::map<char, repeatModes> key_repeatModes_blepairing = {};
-std::map<char, uint16_t> key_commands_short_blepairing = {};
-std::map<char, uint16_t> key_commands_long_blepairing = {};
+KeyMap<repeatModes> key_repeatModes_blepairing = {};
+KeyMap<uint16_t> key_commands_short_blepairing = {};
+KeyMap<uint16_t> key_commands_long_blepairing = {};
 
 lv_obj_t * logText;
 lv_obj_t * dropdownPeers;

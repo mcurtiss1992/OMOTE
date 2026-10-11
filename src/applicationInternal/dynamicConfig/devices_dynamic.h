@@ -13,7 +13,7 @@
 */
 
 // --- Configuration Constants ---
-#define MAX_COMMANDS 200   // Limit to 200 commands
+#define MAX_COMMANDS 400   // built-in commands (register_command) and the ones from the config files
 #define MAX_NAME_LEN 32    // Maximum length for a command name ("<device>_<command>", including the terminating 0)
 
 // Returned by the lookup functions when no command is registered under that name.
@@ -59,6 +59,19 @@ bool register_dynamic_device(const char *deviceName);
  * @return false if the id does not belong to a dynamic command.
  */
 bool getDynamicCommandData(uint16_t id, commandData& out);
+
+/**
+ * @brief Stores a command in the packed command store (used by register_command() as well).
+ * Ids must be stored in increasing order. name may be "" for commands that are not looked up by name.
+ *
+ * @return false if the store is full.
+ */
+bool store_command_packed(uint16_t id, const char* name, const commandData& cmd);
+
+/**
+ * @brief Gives back the spare capacity of the command store. Call once after all commands are registered.
+ */
+void commands_shrinkToFit();
 
 /**
  * @brief Removes all dynamic commands.

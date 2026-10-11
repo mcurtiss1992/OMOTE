@@ -24,9 +24,9 @@ struct SequenceStep {
 // Everything a dynamic scene needs at runtime. Lives in a std::map, so the pointers
 // handed to register_scene() stay valid.
 struct DynamicScene {
-  std::map<char, repeatModes> keyRepeatModes;
-  std::map<char, uint16_t> keyCommandsShort;
-  std::map<char, uint16_t> keyCommandsLong;
+  KeyMap<repeatModes> keyRepeatModes;
+  KeyMap<uint16_t> keyCommandsShort;
+  KeyMap<uint16_t> keyCommandsLong;
   t_gui_list guiList;
   std::vector<SequenceStep> onSequence;
   std::vector<SequenceStep> offSequence;

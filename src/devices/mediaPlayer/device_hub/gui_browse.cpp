@@ -11,9 +11,9 @@
 #include "devices/mediaPlayer/device_hub/device_hub.h"
 #include "devices/mediaPlayer/device_hub/gui_browse.h"
 
-std::map<char, repeatModes> key_repeatModes_browse = {};
-std::map<char, uint16_t> key_commands_short_browse = {};
-std::map<char, uint16_t> key_commands_long_browse = {};
+KeyMap<repeatModes> key_repeatModes_browse = {};
+KeyMap<uint16_t> key_commands_short_browse = {};
+KeyMap<uint16_t> key_commands_long_browse = {};
 uint16_t HUB_BACK;
 
 #if (ENABLE_WIFI_AND_MQTT == 1)

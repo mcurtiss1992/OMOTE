@@ -15,9 +15,9 @@ extern std::string scene_gui_prev;                  // payload: name of this fak
 extern uint16_t GUI_NEXT;                           // command
 extern std::string scene_gui_next;                  // payload: name of this fake scene
 
-extern std::map<char, repeatModes> key_repeatModes_default;
-extern std::map<char, uint16_t> key_commands_short_default;
-extern std::map<char, uint16_t> key_commands_long_default;
+extern KeyMap<repeatModes> key_repeatModes_default;
+extern KeyMap<uint16_t> key_commands_short_default;
+extern KeyMap<uint16_t> key_commands_long_default;
 
 extern t_gui_list main_gui_list;
 

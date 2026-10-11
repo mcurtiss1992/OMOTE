@@ -26,9 +26,9 @@ uint16_t HTPC_OPTIONS;
 uint16_t HTPC_BACK;
 static void leaveList();
 
-std::map<char, repeatModes> key_repeatModes_htpc = {};
-std::map<char, uint16_t> key_commands_short_htpc = {};
-std::map<char, uint16_t> key_commands_long_htpc = {};
+KeyMap<repeatModes> key_repeatModes_htpc = {};
+KeyMap<uint16_t> key_commands_short_htpc = {};
+KeyMap<uint16_t> key_commands_long_htpc = {};
 
 #if (ENABLE_WIFI_AND_MQTT == 1)
 
