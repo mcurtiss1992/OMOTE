@@ -21,6 +21,7 @@
                     {"id":"atv/plex/movies","scene":"Apple TV","title":"Plex movies","layout":"posters",
                      "source":"plex:movies","sort":"released","target":"appletv"}
                     "text" (optional) is shown under the title, e.g. the details of a movie
+                    "theme":"plex" (optional) colors the page and its poster list (brand color, see tileGrid_colorForName)
                     "show":true switches to the Browse tab (e.g. the result of a key press while another tab is shown)
                     {"layout":"none"} after an item that only does something (e.g. launches an app): nothing changes on screen
     omote/ui/online (retained) "1" / "0" (LWT of the hub)
@@ -42,6 +43,7 @@ struct hubPage {
   std::string title;
   std::string layout;   // "tiles" or "choices"
   std::string text;     // shown under the title, can be empty
+  std::string theme;    // brand whose color the page uses, empty: none
   bool back = false;    // the page has a parent page
   std::vector<hubItem> items;
 };

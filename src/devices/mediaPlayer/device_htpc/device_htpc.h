@@ -49,6 +49,7 @@ struct htpcQuery {
   std::string source;           // empty: Plex movies, otherwise a list opened from a menu (e.g. "plex:tv:continue")
   std::string target;           // where a tapped item plays ("appletv", "htpc"), empty: htpc, "hub": the hub shows it. Not part of the list identity.
   std::string title;            // shown instead of "Movies" if set. Not part of the list identity.
+  std::string theme;            // brand color of the list (e.g. "plex"), empty: none. Not part of the list identity.
   bool isDefault() const { return (sort == "added") && genre.empty() && (maxMinutes == 0) && source.empty(); }
   bool operator==(const htpcQuery& other) const {
     return (sort == other.sort) && (genre == other.genre) && (maxMinutes == other.maxMinutes) && ((sort != "random") || (seed == other.seed))

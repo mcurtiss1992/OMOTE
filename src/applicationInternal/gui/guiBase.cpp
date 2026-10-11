@@ -101,8 +101,9 @@ static void homeGesture_timer_cb(lv_timer_t* timer) {
   if ((point.y - start.y >= homeGestureDistance) && (LV_ABS(point.x - start.x) < homeGestureDistance)) {
     tracking = false;
     omote_log_d("- Scene selection: swipe down from the top right corner\r\n");
-    // the touch must not also tap or scroll whatever is below it
+    // the touch must not also tap or scroll whatever is below it, also not when the finger is lifted
     lv_indev_reset(indev, NULL);
+    lv_indev_wait_release(indev);
     goHome = true;
   }
 }

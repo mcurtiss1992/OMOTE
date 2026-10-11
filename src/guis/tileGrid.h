@@ -23,3 +23,7 @@ void tileGrid_setItems(lv_obj_t* grid, const std::vector<tileGridItem>& items);
 
 // a tile color that fits the name (brand colors for known scenes and apps)
 lv_color_t tileGrid_colorForName(const char* name);
+// true if the name has a brand color (otherwise tileGrid_colorForName() returns the default gray)
+bool tileGrid_hasColorForName(const char* name);
+// black or white, whichever is readable on the color
+lv_color_t tileGrid_textColorFor(lv_color_t background);

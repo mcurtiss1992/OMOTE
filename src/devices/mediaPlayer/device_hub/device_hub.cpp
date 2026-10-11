@@ -99,6 +99,7 @@ static void parsePage(const std::string& payload) {
     query.sort   = doc["sort"] | "added";
     query.target = doc["target"] | "";
     query.title  = doc["title"] | "";
+    query.theme  = doc["theme"] | "";
     pendingQuery = query;
     // coming back to a list from its details: the menu is the one the list was opened from
     if (hasPage && (page.layout != "posters")) {
@@ -121,6 +122,7 @@ static void parsePage(const std::string& payload) {
   newPage.layout = layout;
   newPage.back   = doc["back"] | false;
   newPage.text   = doc["text"] | "";
+  newPage.theme  = doc["theme"] | "";
   for (JsonObject item : doc["items"].as<JsonArray>()) {
     hubItem anItem;
     anItem.id    = item["id"] | "";

@@ -15,6 +15,7 @@
 #include "devices/mediaPlayer/device_htpc/htpc_images.h"
 #include "applicationInternal/scenes/sceneHandler.h"
 #include "devices/mediaPlayer/device_hub/gui_browse.h"
+#include "guis/tileGrid.h"
 #include "scenes/scene__default.h"
 
 uint16_t GUI_HTPC_ACTIVATE;
@@ -363,10 +364,18 @@ static void tiles_draw_event_cb(lv_event_t* e) {
     rect.radius = LV_RADIUS_CIRCLE;
     rect.bg_color = lv_color_black();
     rect.bg_opa = LV_OPA_70;
+    lv_color_t labelColor = label.color;
+    if (!query.theme.empty() && tileGrid_hasColorForName(query.theme.c_str())) {
+      // a list opened from a hub menu: the pill in the brand color
+      rect.bg_color = tileGrid_colorForName(query.theme.c_str());
+      rect.bg_opa = LV_OPA_90;
+      label.color = tileGrid_textColorFor(rect.bg_color);
+    }
     lv_draw_rect(draw_ctx, &rect, &pill);
     lv_area_t positionArea = pill;
     positionArea.y1 += 2;
     lv_draw_label(draw_ctx, &label, &positionArea, text.c_str(), NULL);
+    label.color = labelColor;
     pillArea = pill;
     // easier to hit
     lv_area_increase(&pillArea, 4, 6);

@@ -59,6 +59,12 @@ static void update() {
   }
 
   const hubPage& page = hub_getPage();
+  bool themed = !page.theme.empty() && tileGrid_hasColorForName(page.theme.c_str());
+  lv_color_t themeColor = tileGrid_colorForName(page.theme.c_str());
+  // the title in the brand color, or a light tint of it if the color is too dark to read on black
+  bool light = (tileGrid_textColorFor(themeColor).full == lv_color_black().full);
+  lv_color_t titleColor = !themed ? lv_color_white() : (light ? themeColor : lv_color_mix(lv_color_white(), themeColor, LV_OPA_50));
+  lv_obj_set_style_text_color(titleLabel, titleColor, LV_PART_MAIN);
   std::string title = page.back ? std::string(LV_SYMBOL_LEFT " ") + page.title : page.title;
   lv_label_set_text(titleLabel, title.c_str());
   if (page.back) {
@@ -82,13 +88,14 @@ static void update() {
   // rebuild the tiles only if they changed (e.g. "Request" became "Requested"), so that a pressed tile is not redrawn needlessly
   std::string tiles;
   for (const hubItem& item : page.items) {tiles += item.id + "\x1f" + item.label + "\x1e";}
+  tiles += page.theme;
   if ((page.id == shownPageId) && (page.layout == shownLayout) && (tiles == shownTiles)) {return;}
   shownPageId = page.id;
   shownLayout = page.layout;
   shownTiles = tiles;
 
   bool choices = (page.layout == "choices");
-  lv_color_t pageColor = tileGrid_colorForName(page.title.c_str());
+  lv_color_t pageColor = themed ? themeColor : tileGrid_colorForName(page.title.c_str());
   std::vector<tileGridItem> items;
   for (const hubItem& item : page.items) {
     const std::string& iconName = item.icon.empty() ? item.label : item.icon;

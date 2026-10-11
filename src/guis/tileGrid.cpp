@@ -93,6 +93,9 @@ static void draw_cb(lv_event_t* e) {
     }
     rect.bg_color = pressed ? lv_color_mix(lv_color_white(), item.color, state->pressAmount / 6) : item.color;
     lv_draw_rect(draw_ctx, &rect, &area);
+    // dark text and icons on light tiles (e.g. Plex orange)
+    label.color = tileGrid_textColorFor(item.color);
+    img.recolor = label.color;
 
     if (state->tileHeight > 0) {
       // label only, centered
@@ -219,19 +222,42 @@ void tileGrid_setItems(lv_obj_t* grid, const std::vector<tileGridItem>& items) {
   lv_obj_invalidate(grid);
 }
 
-lv_color_t tileGrid_colorForName(const char* name) {
+// brand colors: Plex orange, Jellyfin purple, Spotify green, Prime Video blue, ...
+static bool brandColor(const char* name, lv_color_t* color) {
   std::string n = name;
   for (char& c : n) {c = tolower((unsigned char)c);}
   auto has = [&n](const char* part) {return n.find(part) != std::string::npos;};
-  if (has("apple"))                                   {return lv_color_hex(0x3a3a3c);}
-  if (has("htpc") || has("linux"))                    {return lv_color_hex(0x8a5a00);}
-  if (has("ps5") || has("ps4") || has("playstation")) {return lv_color_hex(0x0050c8);}
-  if (has("plexamp"))                                 {return lv_color_hex(0x7a5600);}
-  if (has("plex"))                                    {return lv_color_hex(0x1f1f1f);}
-  if (has("jellyfin"))                                {return lv_color_hex(0x5a2d82);}
-  if (has("spotify"))                                 {return lv_color_hex(0x13853e);}
-  if (has("prime") || has("amazon"))                  {return lv_color_hex(0x0a5f8a);}
-  if (has("kanopy"))                                  {return lv_color_hex(0xb3261e);}
-  if (has("overseerr") || has("request"))             {return lv_color_hex(0x4338ca);}
-  return lv_color_hex(0x303030);
+  uint32_t hex;
+  if      (has("apple"))                                   {hex = 0x3a3a3c;}
+  else if (has("htpc") || has("linux"))                    {hex = 0x8a5a00;}
+  else if (has("ps5") || has("ps4") || has("playstation")) {hex = 0x0050c8;}
+  else if (has("plex"))                                    {hex = 0xe5a00d;}   // also Plexamp
+  else if (has("jellyfin"))                                {hex = 0xaa5cc3;}
+  else if (has("spotify"))                                 {hex = 0x1db954;}
+  else if (has("prime") || has("amazon"))                  {hex = 0x00a8e1;}
+  else if (has("kanopy"))                                  {hex = 0xe2412e;}
+  else if (has("overseerr") || has("request"))             {hex = 0x6366f1;}
+  else if (has("discover") || has("find a movie"))         {hex = 0x0e7c86;}
+  else if (has("receiver") || has("denon"))                {hex = 0x2b4c7e;}
+  else {return false;}
+  *color = lv_color_hex(hex);
+  return true;
+}
+
+lv_color_t tileGrid_colorForName(const char* name) {
+  lv_color_t color;
+  return brandColor(name, &color) ? color : lv_color_hex(0x303030);
+}
+
+bool tileGrid_hasColorForName(const char* name) {
+  lv_color_t color;
+  return brandColor(name, &color);
+}
+
+lv_color_t tileGrid_textColorFor(lv_color_t background) {
+  lv_color32_t c;
+  c.full = lv_color_to32(background);
+  // perceived brightness (ITU-R BT.601)
+  uint32_t luma = (299 * c.ch.red + 587 * c.ch.green + 114 * c.ch.blue) / 1000;
+  return (luma > 150) ? lv_color_black() : lv_color_white();
 }
