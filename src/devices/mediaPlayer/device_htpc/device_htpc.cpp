@@ -5,6 +5,7 @@
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
 #include "devices/mediaPlayer/device_htpc/device_htpc.h"
+#include "devices/mediaPlayer/device_hub/device_hub.h"
 #include "devices/mediaPlayer/device_htpc/gui_htpc.h"
 #include "devices/mediaPlayer/device_htpc/htpc_images.h"
 
@@ -55,6 +56,11 @@ void register_device_htpc() {
 
 void htpc_playTile(int index) {
   if ((index < 0) || (index >= (int)tiles.size())) {return;}
+  if (query.target == "hub") {
+    // e.g. a request list: the hub shows the details instead of playing
+    hub_selectInList(query.source, tiles[index].ratingKey);
+    return;
+  }
   JsonDocument doc;
   doc["action"] = "play_tile";
   doc["index"] = pageOffset + index;

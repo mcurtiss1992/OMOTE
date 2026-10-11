@@ -19,6 +19,7 @@
                     or a poster list, shown by the Movies GUI:
                     {"id":"atv/plex/movies","scene":"Apple TV","title":"Plex movies","layout":"posters",
                      "source":"plex:movies","sort":"released","target":"appletv"}
+                    "text" (optional) is shown under the title, e.g. the details of a movie
                     {"layout":"none"} after an item that only does something (e.g. launches an app): nothing changes on screen
     omote/ui/online (retained) "1" / "0" (LWT of the hub)
 */
@@ -38,6 +39,7 @@ struct hubPage {
   std::string scene;
   std::string title;
   std::string layout;   // "tiles" or "choices"
+  std::string text;     // shown under the title, can be empty
   bool back = false;    // the page has a parent page
   std::vector<hubItem> items;
 };
@@ -55,6 +57,8 @@ bool hub_isOnline();
 // ask for the root page of a scene
 void hub_open(const std::string& scene);
 void hub_select(const std::string& itemId);
+// used by device_htpc.cpp: an item of a poster list whose target is the hub was tapped
+void hub_selectInList(const std::string& source, const std::string& itemId);
 // returns false if the page has no parent page
 bool hub_back();
 

@@ -345,7 +345,12 @@ static void tiles_draw_event_cb(lv_event_t* e) {
     }
     std::string text = std::string(position) + "  " + LV_SYMBOL_LIST;
     std::string summary = queryLabel(query);
-    if (!summary.empty()) {text = std::string(position) + "  " + summary;}
+    if (!query.title.empty()) {
+      // a list opened from a hub menu: its name instead of the sort/filter summary
+      text = query.title + "  " + position;
+    } else if (!summary.empty()) {
+      text = std::string(position) + "  " + summary;
+    }
     label.font = &lv_font_montserrat_12;
     lv_point_t size;
     lv_txt_get_size(&size, text.c_str(), label.font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
@@ -402,7 +407,8 @@ static void tiles_input_event_cb(lv_event_t* e) {
     if (indev == NULL) {return;}
     lv_point_t point;
     lv_indev_get_point(indev, &point);
-    if ((pillArea.x2 >= pillArea.x1) && _lv_area_is_point_on(&pillArea, &point, 0)) {
+    bool canFilter = htpc_getQuery().source.empty() || (htpc_getQuery().source == "plex:movies");
+    if (canFilter && (pillArea.x2 >= pillArea.x1) && _lv_area_is_point_on(&pillArea, &point, 0)) {
       showOptions = true;
       scheduleUpdate();
       return;
@@ -981,9 +987,10 @@ static void pagePrevious() {
 }
 
 static void toggleOptions() {
+  bool canFilter = htpc_getQuery().source.empty() || (htpc_getQuery().source == "plex:movies");
   if (currentView == VIEW_OPTIONS) {
     closeOptions(false);
-  } else if (currentView == VIEW_TILES) {
+  } else if ((currentView == VIEW_TILES) && canFilter) {
     showOptions = true;
     scheduleUpdate();
   }

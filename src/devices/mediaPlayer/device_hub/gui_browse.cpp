@@ -24,10 +24,12 @@ static const lv_coord_t choiceHeight = 56;
 static lv_obj_t* browseTab = NULL;
 static lv_obj_t* titleLabel = NULL;
 static lv_obj_t* statusLabel = NULL;
+static lv_obj_t* textLabel = NULL;
 static lv_obj_t* grid = NULL;
 static lv_timer_t* retryTimer = NULL;
 static std::string shownPageId;
 static std::string shownLayout;
+static std::string shownTiles;
 
 static std::string activeScene() {
   return gui_memoryOptimizer_getActiveSceneName();
@@ -52,6 +54,7 @@ static void update() {
     lv_label_set_text(statusLabel, hub_isOnline() ? "Loading..." : "The cinema hub is offline");
     lv_obj_clear_flag(statusLabel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(grid, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(textLabel, LV_OBJ_FLAG_HIDDEN);
     return;
   }
 
@@ -63,6 +66,12 @@ static void update() {
   } else {
     lv_obj_clear_flag(titleLabel, LV_OBJ_FLAG_CLICKABLE);
   }
+  lv_label_set_text(textLabel, page.text.c_str());
+  if (page.text.empty()) {
+    lv_obj_add_flag(textLabel, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_clear_flag(textLabel, LV_OBJ_FLAG_HIDDEN);
+  }
   if (!hub_isOnline()) {
     lv_label_set_text(statusLabel, "The cinema hub is offline");
     lv_obj_clear_flag(statusLabel, LV_OBJ_FLAG_HIDDEN);
@@ -70,10 +79,13 @@ static void update() {
     lv_obj_add_flag(statusLabel, LV_OBJ_FLAG_HIDDEN);
   }
 
-  // rebuild the tiles only if the page changed, so that a pressed tile is not redrawn needlessly
-  if ((page.id == shownPageId) && (page.layout == shownLayout)) {return;}
+  // rebuild the tiles only if they changed (e.g. "Request" became "Requested"), so that a pressed tile is not redrawn needlessly
+  std::string tiles;
+  for (const hubItem& item : page.items) {tiles += item.id + "\x1f" + item.label + "\x1e";}
+  if ((page.id == shownPageId) && (page.layout == shownLayout) && (tiles == shownTiles)) {return;}
   shownPageId = page.id;
   shownLayout = page.layout;
+  shownTiles = tiles;
 
   bool choices = (page.layout == "choices");
   lv_color_t pageColor = tileGrid_colorForName(page.title.c_str());
@@ -89,6 +101,7 @@ static void update() {
   // a new grid for a new page: the number of columns can change
   lv_obj_del(grid);
   grid = tileGrid_create(browseTab, choices ? 1 : 2, tile_cb);
+  lv_obj_move_to_index(grid, lv_obj_get_index(textLabel));
   if (choices) {tileGrid_setTileHeight(grid, choiceHeight);}
   tileGrid_setItems(grid, items);
   lv_obj_scroll_to_y(browseTab, 0, LV_ANIM_OFF);
@@ -114,6 +127,7 @@ void create_tab_content_browse(lv_obj_t* tab) {
   browseTab = tab;
   shownPageId.clear();
   shownLayout.clear();
+  shownTiles.clear();
   lv_obj_set_layout(tab, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(tab, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_scrollbar_mode(tab, LV_SCROLLBAR_MODE_ACTIVE);
@@ -131,6 +145,13 @@ void create_tab_content_browse(lv_obj_t* tab) {
 
   grid = tileGrid_create(tab, 2, tile_cb);
 
+  // below the tiles, so that the buttons of a details page (e.g. "Request") are visible without scrolling
+  textLabel = lv_label_create(tab);
+  lv_obj_set_width(textLabel, lv_pct(100));
+  lv_label_set_long_mode(textLabel, LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_font(textLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+  lv_obj_add_flag(textLabel, LV_OBJ_FLAG_HIDDEN);
+
   if (!hub_hasPageForScene(activeScene())) {hub_open(activeScene());}
   retryTimer = lv_timer_create(retry_timer_cb, retryInterval_ms, NULL);
   update();
@@ -140,6 +161,7 @@ void notify_tab_before_delete_browse(void) {
   browseTab = NULL;
   titleLabel = NULL;
   statusLabel = NULL;
+  textLabel = NULL;
   grid = NULL;
   if (retryTimer != NULL) {
     lv_timer_del(retryTimer);
