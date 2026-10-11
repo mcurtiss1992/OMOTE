@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include "devices/mediaPlayer/device_htpc/device_htpc.h"
+#include "devices/mediaPlayer/device_hub/device_hub.h"
 #include "applicationInternal/commandHandler.h"
 #include "applicationInternal/dynamicConfig/devices_dynamic.h"
 #include "applicationInternal/scenes/sceneHandler.h"
@@ -333,6 +334,7 @@ void receiveWiFiConnected_cb(bool connected) {
 }
 void receiveMQTTmessage_cb(std::string topic, std::string payload) {
   if (htpc_handleMQTTmessage(topic, payload)) {return;}
+  if (hub_handleMQTTmessage(topic, payload)) {return;}
   showMQTTmessage(topic, payload);
 }
 

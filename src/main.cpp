@@ -17,6 +17,7 @@
 #include "applicationInternal/gui/guiRegistry.h"
 #include "devices/mediaPlayer/device_htpc/device_htpc.h"
 #include "devices/mediaPlayer/device_htpc/gui_htpc.h"
+#include "devices/mediaPlayer/device_hub/gui_browse.h"
 #include "guis/gui_sceneSelection.h"
 #include "guis/gui_irReceiver.h"
 #include "guis/gui_settings.h"
@@ -83,6 +84,7 @@ int main(int argc, char *argv[]) {
   // Register the GUIs. They will be displayed in the order they have been registered.
   register_gui_sceneSelection();
   register_gui_htpc();
+  register_gui_browse();
   register_gui_irReceiver();
   register_gui_settings();
   #if (ENABLE_KEYBOARD_BLE == 1)

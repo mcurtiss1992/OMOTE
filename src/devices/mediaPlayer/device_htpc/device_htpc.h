@@ -17,8 +17,10 @@
   OMOTE publishes to
     htpc/omote/cmd      {"action":"play_tile","index":N,"ratingKey":"..."}  N is the index in the whole list (offset + position on the page)
                         {"action":"get_tiles","offset":N,"count":6}  plus, if not the default list:
-                          "sort":"added"|"title"|"released"|"random", "genre":"...", "maxMinutes":120, "seed":N (random)
+                          "sort":"added"|"title"|"released"|"random", "genre":"...", "maxMinutes":120, "seed":N (random),
+                          "source":"plex:tv:continue"|... (another list than the Plex movies, see the menus in device_hub.h)
                           The reply on htpc/movies/page echoes these fields.
+                        play_tile also carries "source" and "target" ("appletv"|"htpc") if the list was opened from a menu
                         {"action":"play_pause"}, {"action":"stop"}, {"action":"seek","seconds":-10}, ...
 */
 
@@ -44,9 +46,13 @@ struct htpcQuery {
   std::string genre;            // empty: all genres
   int maxMinutes = 0;           // 0: any length
   uint32_t seed = 0;            // for "random", the same seed gives the same order
-  bool isDefault() const { return (sort == "added") && genre.empty() && (maxMinutes == 0); }
+  std::string source;           // empty: Plex movies, otherwise a list opened from a menu (e.g. "plex:tv:continue")
+  std::string target;           // where a tapped item plays ("appletv", "htpc"), empty: htpc. Not part of the list identity.
+  std::string title;            // shown instead of "Movies" if set. Not part of the list identity.
+  bool isDefault() const { return (sort == "added") && genre.empty() && (maxMinutes == 0) && source.empty(); }
   bool operator==(const htpcQuery& other) const {
-    return (sort == other.sort) && (genre == other.genre) && (maxMinutes == other.maxMinutes) && ((sort != "random") || (seed == other.seed));
+    return (sort == other.sort) && (genre == other.genre) && (maxMinutes == other.maxMinutes) && ((sort != "random") || (seed == other.seed))
+           && (source == other.source);
   }
 };
 

@@ -59,6 +59,8 @@ void htpc_playTile(int index) {
   doc["action"] = "play_tile";
   doc["index"] = pageOffset + index;
   doc["ratingKey"] = tiles[index].ratingKey;
+  if (!query.source.empty()) {doc["source"] = query.source;}
+  if (!query.target.empty()) {doc["target"] = query.target;}
   std::string payload;
   serializeJson(doc, payload);
   omote_log_i("htpc: play tile %d\r\n", pageOffset + index);
@@ -90,6 +92,7 @@ static void publishGetTiles(int offset) {
     if (!query.genre.empty()) {doc["genre"] = query.genre;}
     if (query.maxMinutes > 0) {doc["maxMinutes"] = query.maxMinutes;}
     if (query.sort == "random") {doc["seed"] = query.seed;}
+    if (!query.source.empty()) {doc["source"] = query.source;}
   }
   std::string payload;
   serializeJson(doc, payload);
@@ -146,8 +149,12 @@ const std::vector<htpcGenre>& htpc_getGenres() {
 static void pruneImages();
 
 void htpc_setQuery(const htpcQuery& newQuery) {
-  if (newQuery == query) {return;}
+  bool sameList = (newQuery == query);
   query = newQuery;
+  if (sameList) {
+    htpc_gui_update();
+    return;
+  }
   // start again at the first page, nothing cached belongs to the new list
   pageOffset = 0;
   total = -1;
@@ -296,6 +303,7 @@ static bool parsePage(const std::string& payload) {
   reply.genre = doc["genre"] | "";
   reply.maxMinutes = doc["maxMinutes"] | 0;
   reply.seed = doc["seed"] | 0;
+  reply.source = doc["source"] | "";
   if (!(reply == query)) {return false;}
   bool requested = (offset == requestedOffset);
   bool prefetched = (offset == prefetchOffset);

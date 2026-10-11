@@ -102,6 +102,8 @@ std::string subscribeTopicHTPC_page                              = "htpc/movies/
 std::string subscribeTopicHTPC_playerState                       = "htpc/player/state";
 std::string subscribeTopicHTPC_bridgeOnline                      = "htpc/bridge/online";
 std::string subscribeTopicHTPC_genres                            = "htpc/movies/genres";
+std::string subscribeTopicHub_page                               = "omote/ui/page";
+std::string subscribeTopicHub_online                             = "omote/ui/online";
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
@@ -177,6 +179,8 @@ void mqtt_subscribeTopics() {
   mqttClient.subscribe(subscribeTopicHTPC_playerState.c_str());
   mqttClient.subscribe(subscribeTopicHTPC_bridgeOnline.c_str());
   mqttClient.subscribe(subscribeTopicHTPC_genres.c_str());
+  mqttClient.subscribe(subscribeTopicHub_page.c_str());
+  mqttClient.subscribe(subscribeTopicHub_online.c_str());
   omote_log_i("  Successfully subscribed to MQTT topics\r\n");
 
 }

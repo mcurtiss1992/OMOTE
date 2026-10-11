@@ -13,6 +13,7 @@ struct TileGridState {
   int columns;
   tileGrid_cb cb;
   std::vector<tileGridItem> items;
+  lv_coord_t tileHeight = 0;  // 0: square
   int pressed = -1;
   int32_t pressAmount = 0;   // 0..256, animated
   bool longPressFired = false;
@@ -27,16 +28,21 @@ static lv_coord_t tileSize(lv_obj_t* grid, TileGridState* state) {
   return (width - (state->columns - 1) * gap) / state->columns;
 }
 
+static lv_coord_t tileHeight(lv_obj_t* grid, TileGridState* state) {
+  return (state->tileHeight > 0) ? state->tileHeight : tileSize(grid, state);
+}
+
 static void tileArea(lv_obj_t* grid, TileGridState* state, int index, lv_area_t* area) {
   lv_area_t coords;
   lv_obj_get_content_coords(grid, &coords);
-  lv_coord_t size = tileSize(grid, state);
+  lv_coord_t width = tileSize(grid, state);
+  lv_coord_t height = tileHeight(grid, state);
   int row = index / state->columns;
   int col = index % state->columns;
-  area->x1 = coords.x1 + col * (size + gap);
-  area->y1 = coords.y1 + row * (size + gap);
-  area->x2 = area->x1 + size - 1;
-  area->y2 = area->y1 + size - 1;
+  area->x1 = coords.x1 + col * (width + gap);
+  area->y1 = coords.y1 + row * (height + gap);
+  area->x2 = area->x1 + width - 1;
+  area->y2 = area->y1 + height - 1;
 }
 
 static int tileAtPoint(lv_obj_t* grid, TileGridState* state) {
@@ -54,7 +60,7 @@ static int tileAtPoint(lv_obj_t* grid, TileGridState* state) {
 
 static void updateHeight(lv_obj_t* grid, TileGridState* state) {
   int rows = (state->items.size() + state->columns - 1) / state->columns;
-  lv_coord_t size = tileSize(grid, state);
+  lv_coord_t size = tileHeight(grid, state);
   lv_coord_t height = (rows > 0) ? rows * size + (rows - 1) * gap : 0;
   if (lv_obj_get_content_height(grid) != height) {lv_obj_set_content_height(grid, height);}
 }
@@ -87,6 +93,15 @@ static void draw_cb(lv_event_t* e) {
     }
     rect.bg_color = pressed ? lv_color_mix(lv_color_white(), item.color, state->pressAmount / 6) : item.color;
     lv_draw_rect(draw_ctx, &rect, &area);
+
+    if (state->tileHeight > 0) {
+      // label only, centered
+      label.font = &lv_font_montserrat_16;
+      lv_coord_t h = lv_font_get_line_height(label.font);
+      lv_area_t labelArea = {(lv_coord_t)(area.x1 + 8), (lv_coord_t)((area.y1 + area.y2 - h) / 2), (lv_coord_t)(area.x2 - 8), (lv_coord_t)((area.y1 + area.y2 + h) / 2)};
+      lv_draw_label(draw_ctx, &label, &labelArea, item.label.c_str(), NULL);
+      continue;
+    }
 
     // icon (or the first letter) and the label below it, centered in the tile
     label.font = LV_FONT_DEFAULT;
@@ -184,6 +199,14 @@ lv_obj_t* tileGrid_create(lv_obj_t* parent, int columns, tileGrid_cb cb) {
   lv_obj_add_event_cb(grid, draw_cb, LV_EVENT_DRAW_MAIN, NULL);
   lv_obj_add_event_cb(grid, input_cb, LV_EVENT_ALL, NULL);
   return grid;
+}
+
+void tileGrid_setTileHeight(lv_obj_t* grid, lv_coord_t height) {
+  TileGridState* state = stateOf(grid);
+  if (state == NULL) {return;}
+  state->tileHeight = height;
+  updateHeight(grid, state);
+  lv_obj_invalidate(grid);
 }
 
 void tileGrid_setItems(lv_obj_t* grid, const std::vector<tileGridItem>& items) {

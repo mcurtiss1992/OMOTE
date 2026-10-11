@@ -16,6 +16,8 @@ struct tileGridItem {
 typedef void (*tileGrid_cb)(int index, bool longPress);
 
 lv_obj_t* tileGrid_create(lv_obj_t* parent, int columns, tileGrid_cb cb);
+// tiles are square by default. With a height, they are as wide as their column and show only their label (for choices like "Movies" / "TV").
+void tileGrid_setTileHeight(lv_obj_t* grid, lv_coord_t height);
 // the grid gets the height its rows need
 void tileGrid_setItems(lv_obj_t* grid, const std::vector<tileGridItem>& items);
 

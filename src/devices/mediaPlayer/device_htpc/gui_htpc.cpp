@@ -13,6 +13,8 @@
 #include "devices/mediaPlayer/device_htpc/device_htpc.h"
 #include "devices/mediaPlayer/device_htpc/gui_htpc.h"
 #include "devices/mediaPlayer/device_htpc/htpc_images.h"
+#include "applicationInternal/scenes/sceneHandler.h"
+#include "devices/mediaPlayer/device_hub/gui_browse.h"
 #include "scenes/scene__default.h"
 
 uint16_t GUI_HTPC_ACTIVATE;
@@ -20,6 +22,8 @@ uint16_t GUI_HTPC_ACTIVATE;
 uint16_t HTPC_PAGE_NEXT;
 uint16_t HTPC_PAGE_PREVIOUS;
 uint16_t HTPC_OPTIONS;
+uint16_t HTPC_BACK;
+static void leaveList();
 
 std::map<char, repeatModes> key_repeatModes_htpc = {};
 std::map<char, uint16_t> key_commands_short_htpc = {};
@@ -901,7 +905,7 @@ static void tab_gesture_event_cb(lv_event_t* e) {
     if (tilesVisible) {htpc_nextPage();}
   } else if (dir == LV_DIR_BOTTOM) {
     if (!(tilesVisible && htpc_previousPage())) {
-      executeCommand(SCENE_SELECTION);
+      leaveList();
     }
   }
 }
@@ -953,6 +957,21 @@ void notify_tab_before_delete_htpc(void) {
   htpc_images_retainOnly(std::set<std::string>());
 }
 
+// A list opened from a hub menu goes back to that menu, the normal movie list to the scene selection
+static void leaveList() {
+  if (htpc_getQuery().source.empty() || !showGUIbyName(tabName_browse)) {
+    executeCommand(SCENE_SELECTION);
+  }
+}
+
+static void back() {
+  if (currentView == VIEW_OPTIONS) {
+    closeOptions(false);
+  } else {
+    leaveList();
+  }
+}
+
 static void pageNext() {
   if (currentView == VIEW_TILES) {htpc_nextPage();}
 }
@@ -973,11 +992,11 @@ static void toggleOptions() {
 void gui_setKeys_htpc() {
   key_repeatModes_htpc = {
     {KEY_STOP, SHORT}, {KEY_REWI, SHORT}, {KEY_PLAY, SHORT}, {KEY_FORW, SHORT},
-    {KEY_CHUP, SHORT_REPEATED}, {KEY_CHDOW, SHORT_REPEATED}, {KEY_CONF, SHORT},
+    {KEY_CHUP, SHORT_REPEATED}, {KEY_CHDOW, SHORT_REPEATED}, {KEY_CONF, SHORT}, {KEY_BACK, SHORT},
   };
   key_commands_short_htpc = {
     {KEY_STOP, HTPC_STOP}, {KEY_REWI, HTPC_SEEK_BACK}, {KEY_PLAY, HTPC_PLAY_PAUSE}, {KEY_FORW, HTPC_SEEK_FORWARD},
-    {KEY_CHUP, HTPC_PAGE_PREVIOUS}, {KEY_CHDOW, HTPC_PAGE_NEXT}, {KEY_CONF, HTPC_OPTIONS},
+    {KEY_CHUP, HTPC_PAGE_PREVIOUS}, {KEY_CHDOW, HTPC_PAGE_NEXT}, {KEY_CONF, HTPC_OPTIONS}, {KEY_BACK, HTPC_BACK},
   };
 }
 
@@ -1014,5 +1033,6 @@ void register_gui_htpc(void){
   register_callbackCommand(&HTPC_PAGE_NEXT, pageNext);
   register_callbackCommand(&HTPC_PAGE_PREVIOUS, pagePrevious);
   register_callbackCommand(&HTPC_OPTIONS, toggleOptions);
+  register_callbackCommand(&HTPC_BACK, back);
   #endif
 }
