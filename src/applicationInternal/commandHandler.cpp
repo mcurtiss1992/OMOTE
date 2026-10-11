@@ -7,6 +7,7 @@
 #include "devices/mediaPlayer/device_hub/device_hub.h"
 #include "applicationInternal/commandHandler.h"
 #include "applicationInternal/dynamicConfig/devices_dynamic.h"
+#include "applicationInternal/dynamicConfig/guis_dynamic.h"
 #include "applicationInternal/scenes/sceneHandler.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
 #include "applicationInternal/omote_log.h"
@@ -330,6 +331,7 @@ void receiveWiFiConnected_cb(bool connected) {
 void receiveMQTTmessage_cb(std::string topic, std::string payload) {
   if (htpc_handleMQTTmessage(topic, payload)) {return;}
   if (hub_handleMQTTmessage(topic, payload)) {return;}
+  if (dynamic_guis_handleMQTTmessage(topic, payload)) {return;}
   showMQTTmessage(topic, payload);
 }
 

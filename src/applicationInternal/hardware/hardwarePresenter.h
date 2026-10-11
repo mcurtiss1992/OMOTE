@@ -154,6 +154,8 @@ bool publishMQTTMessage(const char *topic, const char *payload);
 bool httpGet(const char *url, std::string *body = nullptr);
 // GET for data (e.g. images). Unlike httpGet it also downloads in the simulator.
 // downloads into buffer (no temporary copy). False if it fails or does not fit, *size is the number of bytes.
+// subscribe to one more MQTT topic (now if connected, and after every reconnect)
+void subscribeMQTTtopic(const char *topic);
 bool httpDownload(const char *url, uint8_t *buffer, size_t bufferSize, size_t *size);
 void wifi_shutdown();
 #endif

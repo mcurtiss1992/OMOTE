@@ -6,6 +6,8 @@ void init_mqtt_HAL(void);
 bool getIsWifiConnected_HAL();
 void mqtt_loop_HAL();
 bool publishMQTTMessage_HAL(const char *topic, const char *payload);
+// more topics to subscribe to (e.g. the state topics of dynamic GUIs), subscribed now if connected and after every reconnect
+void subscribeMQTTtopic_HAL(const char *topic);
 // body (optional) receives the response body, at most 4 KB
 bool httpGet_HAL(const char *url, std::string *body = nullptr);
 // GET for data (e.g. images). Unlike httpGet_HAL it also downloads in the simulator.

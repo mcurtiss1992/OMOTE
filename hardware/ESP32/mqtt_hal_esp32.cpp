@@ -1,3 +1,4 @@
+#include <vector>
 #include <sstream>
 #include "WiFi.h"
 #include <PubSubClient.h>
@@ -102,6 +103,12 @@ std::string subscribeTopicHTPC_page                              = "htpc/movies/
 std::string subscribeTopicHTPC_playerState                       = "htpc/player/state";
 std::string subscribeTopicHTPC_bridgeOnline                      = "htpc/bridge/online";
 std::string subscribeTopicHTPC_genres                            = "htpc/movies/genres";
+static std::vector<std::string> extraTopics;
+void subscribeMQTTtopic_HAL(const char *topic) {
+  for (const std::string& known : extraTopics) {if (known == topic) {return;}}
+  extraTopics.push_back(topic);
+  if (mqttClient.connected()) {mqttClient.subscribe(topic);}
+}
 std::string subscribeTopicHub_page                               = "omote/ui/page";
 std::string subscribeTopicHub_online                             = "omote/ui/online";
 
@@ -181,6 +188,7 @@ void mqtt_subscribeTopics() {
   mqttClient.subscribe(subscribeTopicHTPC_genres.c_str());
   mqttClient.subscribe(subscribeTopicHub_page.c_str());
   mqttClient.subscribe(subscribeTopicHub_online.c_str());
+  for (const std::string& topic : extraTopics) {mqttClient.subscribe(topic.c_str());}
   omote_log_i("  Successfully subscribed to MQTT topics\r\n");
 
 }

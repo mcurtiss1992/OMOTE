@@ -65,7 +65,9 @@ struct DynamicWidget {
   int16_t value;        // slider position / switch state, kept when the tab is recreated
   int16_t sentValue;    // last slider value that was sent
   uint32_t lastSentMs;
-  std::string text;     // button label or text content
+  std::string text;     // button label or text content; text widgets may contain {key} placeholders for state values
+  std::string activeKey;    // button: drawn as active while the GUI's state has activeKey == activeValue
+  std::string activeValue;
   // drawing state, only valid while the GUI has a tab
   uint8_t pressAnim;    // 0..255, pressed look of buttons
   uint8_t switchAnim;   // 0..255, knob position of switches
@@ -77,7 +79,36 @@ struct DynamicGui {
   int rows;              // widget rows, without the title row
   bool themed = false;   // "theme" in the GUI file: buttons, slider fill and switches in a brand color
   lv_color_t accent;
+  std::string stateTopic;  // "state" in the GUI file: MQTT topic with a flat JSON object of state values
 };
+
+// Latest values of the state topics, flat JSON objects as strings ("on", "HDMI1", "true", "3290").
+// Kept for all state topics (not only for cached GUIs), so that a tab shows the state right away.
+static std::map<std::string, std::map<std::string, std::string>> stateValues;
+
+static const std::string* stateValue(const std::string& topic, const std::string& key) {
+  auto t = stateValues.find(topic);
+  if (t == stateValues.end()) return NULL;
+  auto v = t->second.find(key);
+  return (v == t->second.end()) ? NULL : &v->second;
+}
+
+// "{power} | lamp {lamp_hours} h" -> "on | lamp 3290 h"; unknown values are shown as "-"
+static std::string expandState(const std::string& text, const std::string& topic) {
+  if (text.find('{') == std::string::npos) return text;
+  std::string out;
+  size_t i = 0;
+  while (i < text.size()) {
+    size_t open = text.find('{', i);
+    size_t close = (open == std::string::npos) ? std::string::npos : text.find('}', open);
+    if (close == std::string::npos) {out += text.substr(i); break;}
+    out += text.substr(i, open - i);
+    const std::string* value = stateValue(topic, text.substr(open + 1, close - open - 1));
+    out += (value && !value->empty()) ? *value : "-";
+    i = close + 1;
+  }
+  return out;
+}
 
 // Cache of parsed GUIs, only the ones that currently have a tab (previous, current, next).
 // key: registered (display) name. std::map keeps the addresses of its elements stable,
@@ -200,14 +231,26 @@ static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicW
 
   switch (w.type) {
     case WIDGET_TEXT: {
-      lv_draw_label(draw_ctx, &label, &area, w.text.c_str(), NULL);
+      std::string text = expandState(w.text, gui.stateTopic);
+      lv_draw_label(draw_ctx, &label, &area, text.c_str(), NULL);
       break;
     }
     case WIDGET_BUTTON: {
       // pressed: darker, like the default theme
       rect.radius = look.buttonRadius;
-      rect.bg_color = lv_color_mix(lv_color_darken(buttonColor, LV_OPA_30), buttonColor, w.pressAnim);
+      // active (its state value matches): lighter, with a white outline
+      const std::string* value = w.activeKey.empty() ? NULL : stateValue(gui.stateTopic, w.activeKey);
+      bool active = (value != NULL) && (*value == w.activeValue);
+      lv_color_t fill = active ? lv_color_mix(lv_color_white(), buttonColor, LV_OPA_30) : buttonColor;
+      rect.bg_color = lv_color_mix(lv_color_darken(fill, LV_OPA_30), fill, w.pressAnim);
+      if (active) {
+        rect.border_color = lv_color_white();
+        rect.border_width = 2;
+        rect.border_opa = LV_OPA_COVER;
+      }
       lv_draw_rect(draw_ctx, &rect, &area);
+      rect.border_width = 0;
+      buttonColor = fill;
       lv_point_t size;
       lv_txt_get_size(&size, w.text.c_str(), label.font, 0, 0, lv_area_get_width(&area), LV_TEXT_FLAG_NONE);
       lv_area_t textArea = area;
@@ -526,6 +569,7 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
 
   JsonDocument doc;
   if (loadJsonFile(filePath, doc)) {
+    gui.stateTopic = doc["state"] | "";
     const char* theme = doc["theme"] | "";
     gui.themed = (theme[0] != '\0') && tileGrid_hasColorForName(theme);
     gui.accent = tileGrid_colorForName(theme);
@@ -559,6 +603,9 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
       const char* label = widgetObj["label"] | "";
       const char* content = widgetObj["content"] | "";
       widget.text = (widget.type == WIDGET_TEXT && content[0] != '\0') ? content : label;
+      // "active": {"key": "power_mode", "value": "eco"} highlights a button while the GUI's state has that value
+      widget.activeKey = widgetObj["active"]["key"] | "";
+      widget.activeValue = widgetObj["active"]["value"] | "";
 
       widget.command = DYNAMIC_COMMAND_NOT_FOUND;
       if (widget.type != WIDGET_TEXT) {
@@ -609,7 +656,56 @@ void register_dynamic_guis() {
     guiFileNames[name] = guiName;
     guiDisplayNames[guiName] = name;
 
+#if (ENABLE_WIFI_AND_MQTT == 1)
+    // subscribe to the GUI's state topic now, so that its retained state is there before the tab is opened
+    JsonDocument guiDoc;
+    if (loadJsonFile("gui_" + guiName + ".json", guiDoc)) {
+      const char* stateTopic = guiDoc["state"] | "";
+      if ((stateTopic[0] != '\0') && (stateValues.count(stateTopic) == 0)) {
+        stateValues[stateTopic];
+        subscribeMQTTtopic(stateTopic);
+      }
+    }
+#endif
+
     register_gui(name, create_tab_content_dynamic, notify_tab_before_delete_dynamic);
     omote_log_i("Registered GUI '%s' (loaded on demand)\r\n", name.c_str());
   }
+}
+
+// ---------------------------------------------------------------------------
+// State topics: MQTT messages with a flat JSON object, e.g. htpc/epson/state {"power":"on","lamp_hours":3290}
+// ---------------------------------------------------------------------------
+static void redrawStateGuis_timer_cb(lv_timer_t* timer) {
+  for (auto& entry : dynamicGuis) {
+    DynamicGui& gui = entry.second;
+    if (gui.stateTopic.empty()) continue;
+    for (DynamicWidget& w : gui.widgets) {
+      if (w.canvas != NULL) {lv_obj_invalidate(w.canvas); break;}
+    }
+  }
+}
+
+bool dynamic_guis_handleMQTTmessage(const std::string& topic, const std::string& payload) {
+  auto t = stateValues.find(topic);
+  if (t == stateValues.end()) return false;
+  JsonDocument doc;
+  if (deserializeJson(doc, payload) || !doc.is<JsonObjectConst>()) {
+    omote_log_w("State %s is not a JSON object\r\n", topic.c_str());
+    return true;
+  }
+  std::map<std::string, std::string> values;
+  for (JsonPairConst kv : doc.as<JsonObjectConst>()) {
+    JsonVariantConst v = kv.value();
+    std::string text;
+    if (v.is<bool>()) {text = v.as<bool>() ? "true" : "false";}
+    else if (v.is<const char*>()) {text = v.as<const char*>();}
+    else if (!v.isNull()) {serializeJson(v, text);}
+    values[kv.key().c_str()] = text;
+  }
+  t->second = values;
+  // redraw from the GUI loop, not from the MQTT callback
+  lv_timer_t* timer = lv_timer_create(redrawStateGuis_timer_cb, 0, NULL);
+  lv_timer_set_repeat_count(timer, 1);
+  return true;
 }

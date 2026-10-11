@@ -25,4 +25,12 @@ std::string dynamicGuiDisplayName(const std::string& guiname);
  */
 void dynamic_guis_trimCache();
 
+/**
+ * @brief Takes MQTT messages of the GUIs' state topics ("state" in a GUI file: a flat JSON object). The values are
+ * shown by text widgets with {key} placeholders and by buttons with "active": {"key": ..., "value": ...}.
+ *
+ * @return true if the topic is a state topic.
+ */
+bool dynamic_guis_handleMQTTmessage(const std::string& topic, const std::string& payload);
+
 #endif // GUIS_DYNAMIC_H
