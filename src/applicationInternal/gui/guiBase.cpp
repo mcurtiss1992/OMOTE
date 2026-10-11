@@ -68,6 +68,45 @@ void screen_gesture_event_cb(lv_event_t* e) {
   }    
 }
 
+// Swipe down that starts in the top right corner: back to the scene selection (home screen) from anywhere.
+// Watched on the input device itself, so it also works over tabs that use vertical swipes themselves (Movies).
+static const lv_coord_t homeGestureCornerWidth  = 80;
+static const lv_coord_t homeGestureCornerHeight = 45;
+static const lv_coord_t homeGestureDistance     = 50;
+static void homeGesture_timer_cb(lv_timer_t* timer) {
+  static bool wasPressed = false;
+  static bool tracking = false;
+  static bool goHome = false;
+  static lv_point_t start;
+
+  lv_indev_t* indev = lv_indev_get_next(NULL);
+  while ((indev != NULL) && (lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER)) {indev = lv_indev_get_next(indev);}
+  if (indev == NULL) {return;}
+
+  bool pressed = (indev->proc.state == LV_INDEV_STATE_PRESSED);
+  lv_point_t point = indev->proc.types.pointer.act_point;
+  if (pressed && !wasPressed) {
+    start = point;
+    tracking = (point.x >= SCR_WIDTH - homeGestureCornerWidth) && (point.y < homeGestureCornerHeight);
+  }
+  wasPressed = pressed;
+  // switch only after the finger is lifted, switching while the touch is still going on does nothing
+  if (!pressed && goHome) {
+    goHome = false;
+    executeCommand(SCENE_SELECTION);
+    return;
+  }
+  if (!pressed || !tracking) {return;}
+
+  if ((point.y - start.y >= homeGestureDistance) && (LV_ABS(point.x - start.x) < homeGestureDistance)) {
+    tracking = false;
+    omote_log_d("- Scene selection: swipe down from the top right corner\r\n");
+    // the touch must not also tap or scroll whatever is below it
+    lv_indev_reset(indev, NULL);
+    goHome = true;
+  }
+}
+
 // Set the page indicator (panel) scroll position relative to the tabview content scroll position
 // this is a callback if the CONTENT of the tabview is scrolled (LV_EVENT_SCROLL)
 void tabview_content_is_scrolling_event_cb(lv_event_t* e){
@@ -171,6 +210,8 @@ void init_gui(void) {
 
   // register callback for swipe down event to navigate to the scene selection page
   lv_obj_add_event_cb(lv_scr_act(), screen_gesture_event_cb, LV_EVENT_GESTURE, NULL);
+  static lv_timer_t* homeGestureTimer = NULL;
+  if (homeGestureTimer == NULL) {homeGestureTimer = lv_timer_create(homeGesture_timer_cb, 15, NULL);}
 
 }
 

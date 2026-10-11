@@ -55,7 +55,7 @@ void register_scene_defaultKeys(void) {
     {KEY_BACK,  SHORT            },                                                                          {KEY_SRC,   SHORT            },
     {KEY_VOLUP, SHORT_REPEATED   },                      {KEY_MUTE,  SHORT            },                     {KEY_CHUP,  SHORT            },
     {KEY_VOLDO, SHORT_REPEATED   },                      {KEY_REC,   SHORT            },                     {KEY_CHDOW, SHORT            },
-    {KEY_RED,   SHORT            },    {KEY_GREEN, SHORT            },    {KEY_YELLO, SHORT            },    {KEY_BLUE,  SHORT            },
+    {KEY_RED,   SHORTorLONG      },    {KEY_GREEN, SHORTorLONG      },    {KEY_YELLO, SHORTorLONG      },    {KEY_BLUE,  SHORTorLONG      },
   };
   
   key_commands_short_default = {
@@ -70,9 +70,9 @@ void register_scene_defaultKeys(void) {
     /*{KEY_RED,   SCENE_TV_FORCE   },    {KEY_GREEN, SCENE_FIRETV_FORCE},  {KEY_YELLO, SCENE_CHROMECAST_FORCE},{KEY_BLUE,  SCENE_APPLETV_FORCE},*/
   };
   
+  // holding any color key goes back to the scene selection (home screen)
   key_commands_long_default = {
-  
-  
+    {KEY_RED,   SCENE_SELECTION  },    {KEY_GREEN, SCENE_SELECTION  },    {KEY_YELLO, SCENE_SELECTION  },    {KEY_BLUE,  SCENE_SELECTION  },
   };
 
 }
