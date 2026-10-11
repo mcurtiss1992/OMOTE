@@ -10,6 +10,7 @@ struct tileGridItem {
   std::string label;
   const lv_img_dsc_t* icon;  // 4-bit alpha icon drawn in white, NULL: the first letter of the label is drawn
   lv_color_t color;          // tile background
+  const char* symbol;        // LV_SYMBOL_... drawn if there is no icon (optional)
 };
 
 // index of the tapped tile; longPress is true if the tile was held

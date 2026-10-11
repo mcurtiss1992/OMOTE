@@ -7,6 +7,8 @@
 // for changing to scene Selection gui
 #include "applicationInternal/commandHandler.h"
 #include "applicationInternal/omote_log.h"
+#include "applicationInternal/scenes/sceneRegistry.h"
+#include "guis/gui_devices.h"
 #include "scenes/scene__default.h"
 
 lv_color_t color_primary = lv_color_hex(0x303030); // gray
@@ -54,6 +56,13 @@ void pageIndicator_navigate_event_cb(lv_event_t* e) {
 
 // callback when sceneLabel or pageIndicator was clicked
 void sceneLabel_or_pageIndicator_event_cb(lv_event_t* e) {
+  // in a device mode: back to the scene that runs
+  std::string active = gui_memoryOptimizer_getActiveSceneName();
+  if (isDeviceMode(active) && sceneExists(get_runningScene())) {
+    omote_log_d("- Scene label clicked in device mode, back to scene %s\r\n", get_runningScene().c_str());
+    executeCommand(get_activate_scene_command(get_runningScene()));
+    return;
+  }
   omote_log_d("- Scene selection: sceneLabel or pageIndicator clicked received for navigating to scene selection page\r\n");
   executeCommand(SCENE_SELECTION);
 }
@@ -69,6 +78,7 @@ void screen_gesture_event_cb(lv_event_t* e) {
 }
 
 // Swipe down that starts in the top right corner: back to the scene selection (home screen) from anywhere.
+// The same from the top left corner: the Devices GUI.
 // Watched on the input device itself, so it also works over tabs that use vertical swipes themselves (Movies).
 static const lv_coord_t homeGestureCornerWidth  = 80;
 static const lv_coord_t homeGestureCornerHeight = 45;
@@ -77,6 +87,8 @@ static void homeGesture_timer_cb(lv_timer_t* timer) {
   static bool wasPressed = false;
   static bool tracking = false;
   static bool goHome = false;
+  static bool goDevices = false;
+  static bool fromLeft = false;
   static lv_point_t start;
 
   lv_indev_t* indev = lv_indev_get_next(NULL);
@@ -87,7 +99,8 @@ static void homeGesture_timer_cb(lv_timer_t* timer) {
   lv_point_t point = indev->proc.types.pointer.act_point;
   if (pressed && !wasPressed) {
     start = point;
-    tracking = (point.x >= SCR_WIDTH - homeGestureCornerWidth) && (point.y < homeGestureCornerHeight);
+    fromLeft = (point.x < homeGestureCornerWidth);
+    tracking = (fromLeft || (point.x >= SCR_WIDTH - homeGestureCornerWidth)) && (point.y < homeGestureCornerHeight);
   }
   wasPressed = pressed;
   // switch only after the finger is lifted, switching while the touch is still going on does nothing
@@ -96,15 +109,20 @@ static void homeGesture_timer_cb(lv_timer_t* timer) {
     executeCommand(SCENE_SELECTION);
     return;
   }
+  if (!pressed && goDevices) {
+    goDevices = false;
+    executeCommand(GUI_DEVICES_ACTIVATE);
+    return;
+  }
   if (!pressed || !tracking) {return;}
 
   if ((point.y - start.y >= homeGestureDistance) && (LV_ABS(point.x - start.x) < homeGestureDistance)) {
     tracking = false;
-    omote_log_d("- Scene selection: swipe down from the top right corner\r\n");
+    omote_log_d("- swipe down from the top %s corner\r\n", fromLeft ? "left" : "right");
     // the touch must not also tap or scroll whatever is below it, also not when the finger is lifted
     lv_indev_reset(indev, NULL);
     lv_indev_wait_release(indev);
-    goHome = true;
+    if (fromLeft) {goDevices = true;} else {goHome = true;}
   }
 }
 

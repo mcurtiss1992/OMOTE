@@ -116,18 +116,30 @@ void handleScene(uint16_t command, commandData commandData, std::string addition
     callEndAndStartSequences = true;
   }
 
+  // Device modes: going into one, or from one back to the scene that was running, runs no sequences.
+  // From a device mode to another scene, the running scene is ended (not the device mode).
+  std::string activeScene = gui_memoryOptimizer_getActiveSceneName();
+  std::string sceneToEnd = isDeviceMode(activeScene) ? get_runningScene() : activeScene;
+  if (isDeviceMode(scene_name)) {
+    if (!isDeviceMode(activeScene)) {set_runningScene(activeScene);}
+    callEndAndStartSequences = false;
+  } else if (isDeviceMode(activeScene) && (scene_name == get_runningScene()) && (isForcePayload != "FORCE") && (additionalPayload != "FORCE")) {
+    callEndAndStartSequences = false;
+  }
+  if (!isDeviceMode(scene_name)) {set_runningScene(scene_name);}
+
   if (SceneLabel != NULL) {lv_label_set_text(SceneLabel, "changing...");}
   gui_loop();
 
   if (callEndAndStartSequences) {
     // end old scene
-    if (!sceneExists(gui_memoryOptimizer_getActiveSceneName()) && (gui_memoryOptimizer_getActiveSceneName() != "")) {
-      omote_log_w("scene: WARNING: cannot end scene %s, because it is unknown\r\n", gui_memoryOptimizer_getActiveSceneName().c_str());
+    if (!sceneExists(sceneToEnd) && (sceneToEnd != "")) {
+      omote_log_w("scene: WARNING: cannot end scene %s, because it is unknown\r\n", sceneToEnd.c_str());
   
     } else {
-      if (gui_memoryOptimizer_getActiveSceneName() != "") {
-        omote_log_d("scene: will call end sequence for scene %s\r\n", gui_memoryOptimizer_getActiveSceneName().c_str());
-        scene_end_sequence_from_registry(gui_memoryOptimizer_getActiveSceneName());
+      if (sceneToEnd != "") {
+        omote_log_d("scene: will call end sequence for scene %s\r\n", sceneToEnd.c_str());
+        scene_end_sequence_from_registry(sceneToEnd);
       }
   
     }

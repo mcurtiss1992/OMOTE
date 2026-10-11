@@ -40,6 +40,7 @@
 #include "applicationInternal/omote_log.h"
 #include "devices_dynamic.h"
 #include "guis_dynamic.h"
+#include "guis/tileGrid.h"
 
 // ---------------------------------------------------------------------------
 // Grid configuration – a 12-unit grid is used. Row 0 holds the title of the GUI,
@@ -74,6 +75,8 @@ struct DynamicWidget {
 struct DynamicGui {
   std::vector<DynamicWidget> widgets;
   int rows;              // widget rows, without the title row
+  bool themed = false;   // "theme" in the GUI file: buttons, slider fill and switches in a brand color
+  lv_color_t accent;
 };
 
 // Cache of parsed GUIs, only the ones that currently have a tab (previous, current, next).
@@ -182,7 +185,8 @@ static void widgetArea(lv_obj_t* canvas, const DynamicWidget& w, lv_area_t* area
   area->y2 = area->y1 + height - 1;
 }
 
-static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicWidget& w) {
+static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicWidget& w, const DynamicGui& gui) {
+  lv_color_t buttonColor = gui.themed ? gui.accent : look.buttonColor;
   lv_area_t area;
   widgetArea(canvas, w, &area);
   if (!_lv_area_is_on(&area, draw_ctx->clip_area)) return;
@@ -202,14 +206,14 @@ static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicW
     case WIDGET_BUTTON: {
       // pressed: darker, like the default theme
       rect.radius = look.buttonRadius;
-      rect.bg_color = lv_color_mix(lv_color_darken(look.buttonColor, LV_OPA_30), look.buttonColor, w.pressAnim);
+      rect.bg_color = lv_color_mix(lv_color_darken(buttonColor, LV_OPA_30), buttonColor, w.pressAnim);
       lv_draw_rect(draw_ctx, &rect, &area);
       lv_point_t size;
       lv_txt_get_size(&size, w.text.c_str(), label.font, 0, 0, lv_area_get_width(&area), LV_TEXT_FLAG_NONE);
       lv_area_t textArea = area;
       textArea.y1 += (lv_area_get_height(&area) - size.y) / 2;
       label.align = LV_TEXT_ALIGN_CENTER;
-      label.color = lv_color_white();
+      label.color = gui.themed ? tileGrid_textColorFor(buttonColor) : lv_color_white();
       lv_draw_label(draw_ctx, &label, &textArea, w.text.c_str(), NULL);
       break;
     }
@@ -225,7 +229,7 @@ static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicW
       lv_coord_t knobX = track.x1 + (lv_area_get_width(&track) - 1) * w.value / 100;
       lv_area_t indicator = track;
       indicator.x2 = knobX;
-      rect.bg_color = look.sliderIndicatorColor;
+      rect.bg_color = gui.themed ? gui.accent : look.sliderIndicatorColor;
       lv_draw_rect(draw_ctx, &rect, &indicator);
       lv_coord_t knobRadius = lv_area_get_height(&area) / 2;
       lv_area_t knob = {(lv_coord_t)(knobX - knobRadius), area.y1, (lv_coord_t)(knobX + knobRadius), area.y2};
@@ -238,7 +242,7 @@ static void drawWidget(lv_draw_ctx_t* draw_ctx, lv_obj_t* canvas, const DynamicW
       lv_area_t track = area;
       track.x2 = LV_MIN(area.x2, area.x1 + look.switchWidth - 1);
       rect.radius = LV_RADIUS_CIRCLE;
-      rect.bg_color = lv_color_mix(look.switchOnColor, look.switchOffColor, w.switchAnim);
+      rect.bg_color = lv_color_mix(gui.themed ? gui.accent : look.switchOnColor, look.switchOffColor, w.switchAnim);
       lv_draw_rect(draw_ctx, &rect, &track);
       // like lv_switch: a square knob of the track height that travels along the track,
       // grown by the knob padding (the default theme uses a negative one, so it sits inside)
@@ -261,7 +265,7 @@ static void canvas_draw_event_cb(lv_event_t* e) {
   lv_obj_t* canvas = lv_event_get_target(e);
   lv_draw_ctx_t* draw_ctx = lv_event_get_draw_ctx(e);
   for (const DynamicWidget& w : gui->widgets) {
-    drawWidget(draw_ctx, canvas, w);
+    drawWidget(draw_ctx, canvas, w, *gui);
   }
 }
 
@@ -481,6 +485,11 @@ static void create_tab_content_dynamic(lv_obj_t* tab) {
   // Title in its own row, so that it does not overlap the widget placed at (0,0).
   lv_obj_t* menuLabel = lv_label_create(tab);
   lv_label_set_text(menuLabel, guiName.c_str());
+  if (gui.themed) {
+    // the title in the brand color, or a light tint of it if the color is too dark to read on black
+    bool light = (tileGrid_textColorFor(gui.accent).full == lv_color_black().full);
+    lv_obj_set_style_text_color(menuLabel, light ? gui.accent : lv_color_mix(lv_color_white(), gui.accent, LV_OPA_50), LV_PART_MAIN);
+  }
   lv_obj_set_pos(menuLabel, 0, (GRID_ROW_HEIGHT - lv_font_get_line_height(look.font)) / 2);
 
   // one object draws all widgets
@@ -517,6 +526,9 @@ static void load_gui_definition(const std::string& filePath, DynamicGui& gui) {
 
   JsonDocument doc;
   if (loadJsonFile(filePath, doc)) {
+    const char* theme = doc["theme"] | "";
+    gui.themed = (theme[0] != '\0') && tileGrid_hasColorForName(theme);
+    gui.accent = tileGrid_colorForName(theme);
     JsonArrayConst widgets = doc["widgets"].as<JsonArrayConst>();
     if (widgets.isNull()) {
       omote_log_w("No widgets found in GUI JSON: %s\r\n", filePath.c_str());

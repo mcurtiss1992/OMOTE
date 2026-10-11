@@ -201,9 +201,28 @@ void register_dynamic_scenes() {
     return;
   }
 
+  // Device modes ("devicemodes.json", optional): {"devices": [{"name": "Projector", "label": "Projector", "theme": "projector"}, ...]}
+  // A device mode is a scene (key mapping in scene_<name>.json, GUIs in <name>_gui_extras.json) that controls one
+  // device; it is chosen on the Devices GUI and runs no sequences. See register_deviceMode().
+  std::vector<deviceMode> modes;
+  JsonDocument modesDoc;
+  if (loadJsonFile("devicemodes.json", modesDoc)) {
+    for (JsonObjectConst device : modesDoc["devices"].as<JsonArrayConst>()) {
+      deviceMode mode;
+      mode.name  = device["name"] | "";
+      mode.label = device["label"] | mode.name.c_str();
+      mode.theme = device["theme"] | "";
+      if (!mode.name.empty()) {modes.push_back(mode);}
+    }
+  }
+  JsonDocument allNamesDoc;
+  JsonArray allNames = allNamesDoc.to<JsonArray>();
+  for (JsonVariantConst name : scenesArray) {allNames.add(name);}
+  for (const deviceMode& mode : modes) {allNames.add(mode.name);}
+
   // Pass 1: give every scene its activation commands, so that keys can switch to scenes listed later
   std::vector<std::string> sceneNames;
-  for (JsonVariantConst sceneNameVariant : scenesArray) {
+  for (JsonVariantConst sceneNameVariant : allNames) {
     const char* sceneName = sceneNameVariant.as<const char*>();
     if ((sceneName == NULL) || (sceneName[0] == '\0') || (dynamicScenes.count(sceneName) > 0)) continue;
     DynamicScene& scene = dynamicScenes[sceneName];
@@ -215,5 +234,8 @@ void register_dynamic_scenes() {
   // Pass 2: key mappings, sequences and GUI lists
   for (const std::string& sceneName : sceneNames) {
     register_dynamic_scene(sceneName, dynamicScenes[sceneName]);
+  }
+  for (const deviceMode& mode : modes) {
+    if (sceneExists(mode.name)) {register_deviceMode(mode);}
   }
 }

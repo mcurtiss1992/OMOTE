@@ -115,13 +115,13 @@ static void draw_cb(lv_event_t* e) {
     lv_area_t iconArea = {(lv_coord_t)(centerX - iconSize / 2), top, (lv_coord_t)(centerX - iconSize / 2 + iconSize - 1), (lv_coord_t)(top + iconSize - 1)};
     if (item.icon != NULL) {
       lv_draw_img(draw_ctx, &img, &iconArea, item.icon);
-    } else if (!item.label.empty()) {
-      char letter[2] = {item.label[0], 0};
+    } else if ((item.symbol != NULL) || !item.label.empty()) {
+      char letter[2] = {item.label.empty() ? ' ' : item.label[0], 0};
       lv_draw_label_dsc_t big = label;
       big.font = &lv_font_montserrat_24;
       lv_coord_t h = lv_font_get_line_height(big.font);
       lv_area_t letterArea = {iconArea.x1, (lv_coord_t)(iconArea.y1 + (iconSize - h) / 2), iconArea.x2, (lv_coord_t)(iconArea.y1 + (iconSize + h) / 2)};
-      lv_draw_label(draw_ctx, &big, &letterArea, letter, NULL);
+      lv_draw_label(draw_ctx, &big, &letterArea, (item.symbol != NULL) ? item.symbol : letter, NULL);
     }
     lv_area_t labelArea = {(lv_coord_t)(area.x1 + 4), (lv_coord_t)(iconArea.y2 + 1 + iconLabelGap), (lv_coord_t)(area.x2 - 4), (lv_coord_t)(iconArea.y2 + iconLabelGap + labelHeight)};
     lv_draw_label(draw_ctx, &label, &labelArea, item.label.c_str(), NULL);
@@ -238,7 +238,9 @@ static bool brandColor(const char* name, lv_color_t* color) {
   else if (has("kanopy"))                                  {hex = 0xe2412e;}
   else if (has("overseerr") || has("request"))             {hex = 0x6366f1;}
   else if (has("discover") || has("find a movie"))         {hex = 0x0e7c86;}
-  else if (has("receiver") || has("denon"))                {hex = 0x2b4c7e;}
+  else if (has("receiver") || has("denon") || has("sound")) {hex = 0x3b6fb6;}
+  else if (has("projector") || has("epson"))               {hex = 0x1f8fa3;}
+  else if (has("light"))                                   {hex = 0xf2b632;}
   else {return false;}
   *color = lv_color_hex(hex);
   return true;

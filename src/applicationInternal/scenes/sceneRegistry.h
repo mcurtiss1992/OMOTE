@@ -55,6 +55,21 @@ uint16_t get_activate_scene_command(std::string sceneName);
 scene_list get_scenes_on_sceneSelectionGUI();
 void set_scenes_on_sceneSelectionGUI(t_scene_list a_scene_list);
 
+// Device modes: scenes that control a single device (e.g. "Projector"), entered from the Devices GUI.
+// Entering or leaving one does not run any start/end sequence; the scene that was running stays the
+// "running scene" and can be returned to.
+struct deviceMode {
+  std::string name;    // the scene name
+  std::string label;   // shown on the Devices GUI
+  std::string theme;   // brand color, see tileGrid_colorForName()
+};
+void register_deviceMode(const deviceMode& mode);
+bool isDeviceMode(const std::string& sceneName);
+const std::vector<deviceMode>& get_deviceModes();
+// the scene (not a device mode) that runs, "" if none
+std::string get_runningScene();
+void set_runningScene(const std::string& sceneName);
+
 extern char KEY_OFF  ;
 extern char KEY_STOP ;
 extern char KEY_REWI ;

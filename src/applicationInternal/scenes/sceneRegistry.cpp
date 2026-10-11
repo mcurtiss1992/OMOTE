@@ -1,5 +1,6 @@
 #include <map>
 #include <stdexcept>
+#include <algorithm>
 #include "applicationInternal/gui/guiMemoryOptimizer.h"
 #include "applicationInternal/gui/guiRegistry.h"
 #include "applicationInternal/hardware/hardwarePresenter.h"
@@ -265,3 +266,33 @@ char KEY_RED    = '1';
 char KEY_GREEN  = '2';
 char KEY_YELLO  = '3';
 char KEY_BLUE   = '4';
+
+// --- device modes ----------------------------------------------------------------------------------------------
+static std::vector<deviceMode> deviceModes;
+static std::string runningScene;
+
+void register_deviceMode(const deviceMode& mode) {
+  deviceModes.push_back(mode);
+  // device modes are chosen on the Devices GUI, not on the scene selection
+  auto it = std::find(scenes_on_sceneSelectionGUI.begin(), scenes_on_sceneSelectionGUI.end(), mode.name);
+  if (it != scenes_on_sceneSelectionGUI.end()) {scenes_on_sceneSelectionGUI.erase(it);}
+}
+
+bool isDeviceMode(const std::string& sceneName) {
+  for (const deviceMode& mode : deviceModes) {
+    if (mode.name == sceneName) {return true;}
+  }
+  return false;
+}
+
+const std::vector<deviceMode>& get_deviceModes() {
+  return deviceModes;
+}
+
+std::string get_runningScene() {
+  return runningScene;
+}
+
+void set_runningScene(const std::string& sceneName) {
+  runningScene = sceneName;
+}
