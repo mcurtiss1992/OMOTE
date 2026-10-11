@@ -71,6 +71,8 @@ std::string subscribeTopicHTPC_page                              = "htpc/movies/
 std::string subscribeTopicHTPC_playerState                       = "htpc/player/state";
 std::string subscribeTopicHTPC_bridgeOnline                      = "htpc/bridge/online";
 std::string subscribeTopicHTPC_genres                            = "htpc/movies/genres";
+std::string subscribeTopicHub_page                               = "omote/ui/page";
+std::string subscribeTopicHub_online                             = "omote/ui/online";
 
 void publish_callback(void** state, struct mqtt_response_publish *publish) {
     **(int**)state += 1;
@@ -112,6 +114,8 @@ void mqtt_subscribeTopics() {
   mqtt_subscribe(&mqttClient, subscribeTopicHTPC_playerState.c_str(), 0);
   mqtt_subscribe(&mqttClient, subscribeTopicHTPC_bridgeOnline.c_str(), 0);
   mqtt_subscribe(&mqttClient, subscribeTopicHTPC_genres.c_str(), 0);
+  mqtt_subscribe(&mqttClient, subscribeTopicHub_page.c_str(), 0);
+  mqtt_subscribe(&mqttClient, subscribeTopicHub_online.c_str(), 0);
 
 }
 
