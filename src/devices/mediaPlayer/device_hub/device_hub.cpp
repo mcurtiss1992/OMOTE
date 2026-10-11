@@ -131,7 +131,8 @@ static void parsePage(const std::string& payload) {
   page = newPage;
   hasPage = true;
   browse_gui_update();
-  if (gui_memoryOptimizer_getActiveGUIname() == tabName_htpc) {
+  bool show = doc["show"] | false;
+  if ((show || (gui_memoryOptimizer_getActiveGUIname() == tabName_htpc)) && (gui_memoryOptimizer_getActiveGUIname() != tabName_browse)) {
     lv_timer_t* timer = lv_timer_create(showBrowse_timer_cb, 0, NULL);
     lv_timer_set_repeat_count(timer, 1);
   }

@@ -10,6 +10,7 @@
 
   OMOTE publishes to
     omote/ui/cmd    {"action":"open","scene":"Apple TV"}             the root page of a scene
+                    {"action":"request_focused"}                     request the movie highlighted on the TV (a key, see device_Hub.json)
                     {"action":"select","page":"atv/plex","item":"movies"}
                     {"action":"back","page":"atv/plex"}
   OMOTE subscribes to
@@ -20,6 +21,7 @@
                     {"id":"atv/plex/movies","scene":"Apple TV","title":"Plex movies","layout":"posters",
                      "source":"plex:movies","sort":"released","target":"appletv"}
                     "text" (optional) is shown under the title, e.g. the details of a movie
+                    "show":true switches to the Browse tab (e.g. the result of a key press while another tab is shown)
                     {"layout":"none"} after an item that only does something (e.g. launches an app): nothing changes on screen
     omote/ui/online (retained) "1" / "0" (LWT of the hub)
 */
